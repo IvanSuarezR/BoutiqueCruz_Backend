@@ -1,0 +1,20 @@
+# Django Framework
+Django==5.2.7
+
+# Django REST Framework
+djangorestframework==3.15.2
+
+# JWT Authentication
+djangorestframework-simplejwt==5.5.1
+
+# CORS Headers
+django-cors-headers==4.6.0
+
+# PostgreSQL adapter
+psycopg2-binary==2.9.10
+
+# Environment variables
+python-dotenv==1.0.1
+
+# Image processing (for ImageField)
+Pillow==11.0.0
