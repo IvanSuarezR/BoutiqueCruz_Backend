@@ -1,0 +1,53 @@
+import axiosInstance from './axiosConfig.js';
+
+const unwrap = (data) => (Array.isArray(data) ? data : (data?.results ?? data));
+
+const rbacService = {
+  // Roles
+  getRoles: async () => {
+    const res = await axiosInstance.get('/auth/roles/');
+    return unwrap(res.data);
+  },
+  getRole: async (roleId) => {
+    const res = await axiosInstance.get(`/auth/roles/${roleId}/`);
+    return res.data;
+  },
+  createRole: async (payload) => {
+    const res = await axiosInstance.post('/auth/roles/', payload);
+    return res.data;
+  },
+  updateRole: async (roleId, payload) => {
+    const res = await axiosInstance.patch(`/auth/roles/${roleId}/`, payload);
+    return res.data;
+  },
+  deleteRole: async (roleId) => {
+    const res = await axiosInstance.delete(`/auth/roles/${roleId}/`);
+    return res.data;
+  },
+  assignUsersToRole: async (roleId, userIds) => {
+    const res = await axiosInstance.post(`/auth/roles/${roleId}/assign-users/`, {
+      user_ids: userIds,
+    });
+    return res.data;
+  },
+  revokeUsersFromRole: async (roleId, userIds) => {
+    const res = await axiosInstance.post(`/auth/roles/${roleId}/revoke-users/`, {
+      user_ids: userIds,
+    });
+    return res.data;
+  },
+
+  // Permissions (opcionalmente para futuras pantallas)
+  getPermissions: async () => {
+    const res = await axiosInstance.get('/auth/permissions/');
+    return unwrap(res.data);
+  },
+
+  // Users
+  getUsers: async () => {
+    const res = await axiosInstance.get('/auth/users/');
+    return unwrap(res.data);
+  },
+};
+
+export default rbacService;

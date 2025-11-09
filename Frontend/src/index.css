@@ -1,0 +1,53 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+#root {
+  width: 100%;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* Component utilities using the custom palette */
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center px-4 py-2 rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-60 disabled:cursor-not-allowed;
+  }
+  .btn-primary {
+    @apply inline-flex items-center justify-center px-3 py-2 rounded-none font-medium bg-primary text-white text-sm hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-60 disabled:cursor-not-allowed transition-colors;
+  }
+  .btn-secondary {
+    @apply btn px-3 py-1 rounded-none bg-secondary text-white hover:bg-secondary/90 focus:ring-secondary;
+  }
+  /* Boutique style: thin borders, squared corners */
+  .btn-outline-slim {
+    @apply inline-flex items-center justify-center px-3 py-2 border border-gray-900 text-gray-900 bg-transparent rounded-none text-sm font-medium hover:bg-primary hover:text-white hover:border-primary focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-60 disabled:cursor-not-allowed transition-colors;
+  }
+  .card-slim {
+    @apply border border-gray-200 rounded-none bg-white;
+  }
+  .nav-slim {
+    @apply border-b border-gray-900 bg-white;
+  }
+  .link {
+    @apply text-primary hover:text-primary/80 underline-offset-4 hover:underline;
+  }
+  .badge-primary {
+    @apply inline-flex items-center px-2 py-1 text-xs font-semibold rounded bg-primary/10 text-primary;
+  }
+}
+
