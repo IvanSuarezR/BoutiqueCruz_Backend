@@ -5,9 +5,11 @@ import toast from 'react-hot-toast';
 import CategoryEditModal from '../../components/inventory/CategoryEditModal.jsx';
 import ProductEditModal from '../../components/inventory/ProductEditModal.jsx';
 import logo from '../../assets/boutiquecruz1.png';
+import { useAuth } from '../../context/AuthContext.jsx';
 
 const Categories = () => {
   const navigate = useNavigate();
+  const { canAccessPanel } = useAuth();
   const [initLoading, setInitLoading] = useState(true);
   const [listLoading, setListLoading] = useState(false);
   const [categories, setCategories] = useState([]);
@@ -144,7 +146,9 @@ const Categories = () => {
             <div className="space-x-2">
               {/* <button className="btn-outline-slim" onClick={() => navigate('/')}>Inicio</button> */}
               <button className="btn-outline-slim" onClick={() => navigate('/inventory')}>Productos</button>
-              <button className="btn-outline-slim" onClick={() => navigate('/dashboard')}>Panel</button>
+              {canAccessPanel && canAccessPanel() && (
+                <button className="btn-outline-slim" onClick={() => navigate('/dashboard')}>Panel</button>
+              )}
             </div>
           </div>
         </nav>

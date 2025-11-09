@@ -1,7 +1,7 @@
 from rest_framework import viewsets, status, permissions, decorators
 from rest_framework.response import Response
 from django.contrib.auth import get_user_model
-from .models import Role, AppPermission, user_has_permission, user_roles
+from .models import Role, AppPermission, user_has_permission, user_roles, set_user_type_from_roles
 from .serializers_rbac import (
     RoleSerializer,
     AppPermissionSerializer,
@@ -14,18 +14,21 @@ User = get_user_model()
 
 
 class OwnerRBACPermission(permissions.BasePermission):
-    """
-    Dueños (user_type='admin') o superusuarios (desarrolladores) pueden gestionar RBAC.
-    Los superusuarios tienen acceso total al panel también.
-    """
+    """Permite acceso a endpoints de RBAC a superusuarios y a usuarios con user_type
+    de alto nivel (admin u owner). Antes solo se permitía 'admin', lo que causaba que
+    los owners vieran errores al cargar roles/usuarios.
+
+    Nota: Si en el futuro se quiere granularidad extra (p.e. solo ver, no gestionar),
+    se puede validar permisos específicos como 'roles.view' o 'roles.manage'."""
     def has_permission(self, request, view):
         user = request.user
         if not (user and user.is_authenticated):
             return False
-        # Permitir si es superusuario (desarrollador) o dueño (admin)
+        # Superusuario siempre pasa
         if getattr(user, 'is_superuser', False):
             return True
-        return getattr(user, 'user_type', '') == 'admin'
+        # Tipos de usuario de nivel gerencial
+        return getattr(user, 'user_type', '') in ['admin', 'owner']
 
 
 class AppPermissionViewSet(viewsets.ModelViewSet):
@@ -47,6 +50,8 @@ class RoleViewSet(viewsets.ModelViewSet):
         users = serializer.validated_data['user_ids']
         for u in users:
             u.roles.add(role)
+            set_user_type_from_roles(u)
+            u.save(update_fields=['user_type'])
         return Response({"message": "Usuarios asignados al rol"})
 
     @decorators.action(detail=True, methods=['post'], url_path='revoke-users')
@@ -57,6 +62,8 @@ class RoleViewSet(viewsets.ModelViewSet):
         users = serializer.validated_data['user_ids']
         for u in users:
             u.roles.remove(role)
+            set_user_type_from_roles(u)
+            u.save(update_fields=['user_type'])
         return Response({"message": "Usuarios removidos del rol"})
 
     @decorators.action(detail=True, methods=['post'], url_path='grant-permissions')

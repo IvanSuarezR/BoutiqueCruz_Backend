@@ -1,4 +1,7 @@
-import { createContext, useContext, useEffect, useMemo, useReducer } from 'react';
+import { createContext, useContext, useEffect, useMemo, useReducer, useRef } from 'react';
+import orderService from '../services/orderService.js';
+import { useAuth } from './AuthContext.jsx';
+import toast from 'react-hot-toast';
 
 // Each cart line: { id, name, price, image, qty, sizes:[], selectedSize, colors:[], selectedColor }
 // id corresponds to product id (assumption: unique); optional variant key can be appended later.
@@ -63,6 +66,10 @@ export const CartProvider = ({ children }) => {
   const [state, dispatch] = useReducer(cartReducer, initialState);
 
   // Load from localStorage once
+  const { isAuthenticated } = useAuth();
+  const mergedOnLoginRef = useRef(false);
+
+  // Load local cart initially (for anonymous browsing)
   useEffect(() => {
     try {
       const raw = localStorage.getItem('cart_v1');
@@ -74,16 +81,192 @@ export const CartProvider = ({ children }) => {
   }, []);
 
   // Persist
+  // Persist locally for anonymous users only
   useEffect(() => {
-    try {
-      localStorage.setItem('cart_v1', JSON.stringify({ items: state.items }));
-    } catch {}
-  }, [state.items]);
+    if (!isAuthenticated) {
+      try { localStorage.setItem('cart_v1', JSON.stringify({ items: state.items })); } catch {}
+    }
+  }, [state.items, isAuthenticated]);
 
-  const addItem = (product, opts = {}) => dispatch({ type: 'ADD', payload: { product, ...opts } });
-  const updateQty = (key, qty) => dispatch({ type: 'UPDATE_QTY', payload: { key, qty } });
-  const removeItem = (key) => dispatch({ type: 'REMOVE', payload: { key } });
-  const clearCart = () => dispatch({ type: 'CLEAR' });
+  // On authentication, fetch server cart and merge local items (once)
+  useEffect(() => {
+    const syncServerCart = async () => {
+      if (!isAuthenticated) return;
+      // Fetch server cart
+      try {
+        const server = await orderService.getCart();
+        const serverItems = Array.isArray(server.items) ? server.items : [];
+        // If we haven't merged yet and have local items, send them to server via merge
+        try {
+          if (!mergedOnLoginRef.current && state.items.length) {
+            const payload = {
+              items: state.items.map(i => ({
+                product_id: i.id,
+                quantity: i.qty,
+                size_label: i.selectedSize || null,
+              }))
+            };
+            await orderService.mergeCart(payload);
+            mergedOnLoginRef.current = true;
+            // refetch cart after merge
+            const refreshed = await orderService.getCart();
+            const refreshedItems = Array.isArray(refreshed.items) ? refreshed.items : [];
+            const normalized = refreshedItems.map(ci => ({
+              key: `${ci.product}::${ci.variant_size || ''}::${ci.size_label || ''}`,
+              id: ci.product,
+              name: ci.product_name,
+              price: Number(ci.product_price) || 0,
+              image: ci.product_image_url || null,
+              qty: ci.quantity,
+              selectedSize: ci.size_label || ci.variant_size || null,
+              selectedColor: null,
+              sizes: [],
+              colors: [],
+              stock: ci.availability?.available ?? 0,
+              availability: ci.availability,
+            }));
+            dispatch({ type: 'INIT', payload: { items: normalized } });
+            return;
+          }
+        } catch (e) {
+          toast.error('No se pudo fusionar el carrito');
+        }
+        // If no local items or already merged, just replace with server
+        const normalized = serverItems.map(ci => ({
+          key: `${ci.product}::${ci.variant_size || ''}::${ci.size_label || ''}`,
+          id: ci.product,
+          name: ci.product_name,
+          price: Number(ci.product_price) || 0,
+          image: ci.product_image_url || null,
+          qty: ci.quantity,
+          selectedSize: ci.size_label || ci.variant_size || null,
+          selectedColor: null,
+          sizes: [],
+          colors: [],
+          stock: ci.availability?.available ?? 0,
+          availability: ci.availability,
+        }));
+        dispatch({ type: 'INIT', payload: { items: normalized } });
+      } catch (e) {
+        toast.error('Error cargando carrito');
+      }
+    };
+    syncServerCart();
+  }, [isAuthenticated]);
+
+  const addItem = async (product, opts = {}) => {
+    const { qty = 1, selectedSize } = opts;
+    if (isAuthenticated) {
+      try {
+        await orderService.addToCart({ product_id: product.id, quantity: qty, size_label: selectedSize || null });
+        const server = await orderService.getCart();
+        const serverItems = Array.isArray(server.items) ? server.items : [];
+        const normalized = serverItems.map(ci => ({
+          key: `${ci.product}::${ci.variant_size || ''}::${ci.size_label || ''}`,
+          id: ci.product,
+          name: ci.product_name,
+          price: Number(ci.product_price) || 0,
+          image: ci.product_image_url || null,
+          qty: ci.quantity,
+          selectedSize: ci.size_label || ci.variant_size || null,
+          selectedColor: null,
+          sizes: [],
+          colors: [],
+          stock: ci.availability?.available ?? 0,
+          availability: ci.availability,
+        }));
+        dispatch({ type: 'INIT', payload: { items: normalized } });
+        return;
+      } catch (e) {
+        toast.error('No se pudo agregar al carrito');
+        return;
+      }
+    }
+    dispatch({ type: 'ADD', payload: { product, ...opts } });
+  };
+  const updateQty = async (key, qty) => {
+    if (isAuthenticated) {
+      const item = state.items.find(i => i.key === key);
+      if (!item) return;
+      try {
+        // find matching server item by product + size label
+        const server = await orderService.getCart();
+        const serverItem = (server.items || []).find(ci => ci.product === item.id && (ci.size_label || '') === (item.selectedSize || ''));
+        if (serverItem) {
+          await orderService.updateCartItem(serverItem.id, { quantity: qty });
+          const refreshed = await orderService.getCart();
+          const normalized = (refreshed.items || []).map(ci => ({
+            key: `${ci.product}::${ci.variant_size || ''}::${ci.size_label || ''}`,
+            id: ci.product,
+            name: ci.product_name,
+            price: Number(ci.product_price) || 0,
+            image: ci.product_image_url || null,
+            qty: ci.quantity,
+            selectedSize: ci.size_label || ci.variant_size || null,
+            selectedColor: null,
+            sizes: [],
+            colors: [],
+            stock: ci.availability?.available ?? 0,
+            availability: ci.availability,
+          }));
+          dispatch({ type: 'INIT', payload: { items: normalized } });
+          return;
+        }
+      } catch (e) {
+        toast.error('Error actualizando cantidad');
+        return;
+      }
+    }
+    dispatch({ type: 'UPDATE_QTY', payload: { key, qty } });
+  };
+  const removeItem = async (key) => {
+    if (isAuthenticated) {
+      const item = state.items.find(i => i.key === key);
+      if (!item) return;
+      try {
+        const server = await orderService.getCart();
+        const serverItem = (server.items || []).find(ci => ci.product === item.id && (ci.size_label || '') === (item.selectedSize || ''));
+        if (serverItem) {
+          await orderService.deleteCartItem(serverItem.id);
+          const refreshed = await orderService.getCart();
+          const normalized = (refreshed.items || []).map(ci => ({
+            key: `${ci.product}::${ci.variant_size || ''}::${ci.size_label || ''}`,
+            id: ci.product,
+            name: ci.product_name,
+            price: Number(ci.product_price) || 0,
+            image: ci.product_image_url || null,
+            qty: ci.quantity,
+            selectedSize: ci.size_label || ci.variant_size || null,
+            selectedColor: null,
+            sizes: [],
+            colors: [],
+            stock: ci.availability?.available ?? 0,
+            availability: ci.availability,
+          }));
+          dispatch({ type: 'INIT', payload: { items: normalized } });
+          return;
+        }
+      } catch (e) {
+        toast.error('Error eliminando item');
+        return;
+      }
+    }
+    dispatch({ type: 'REMOVE', payload: { key } });
+  };
+  const clearCart = async () => {
+    if (isAuthenticated) {
+      try {
+        const server = await orderService.getCart();
+        const ids = (server.items || []).map(ci => ci.id);
+        for (const id of ids) {
+          try { await orderService.deleteCartItem(id); } catch {}
+        }
+        dispatch({ type: 'CLEAR' });
+        return;
+      } catch {}
+    }
+    dispatch({ type: 'CLEAR' });
+  };
 
   const totals = useMemo(() => {
     const subtotal = state.items.reduce((sum, i) => sum + i.price * i.qty, 0);

@@ -140,3 +140,47 @@ class ChangePasswordSerializer(serializers.Serializer):
                 {"new_password": "Las contraseñas no coinciden."}
             )
         return attrs
+
+
+class AdminUserUpdateSerializer(serializers.ModelSerializer):
+    """Serializer de actualización de usuario para administradores/owners.
+    No permite modificar user_type (derivado por roles) ni roles aquí.
+    Valida unicidad de email e identificación.
+    """
+    class Meta:
+        model = User
+        fields = [
+            'username', 'email', 'first_name', 'last_name',
+            'identification_number', 'phone', 'gender', 'address',
+            'is_active'
+        ]
+
+    def validate_email(self, value):
+        if not value:
+            return value
+        qs = User.objects.filter(email=value)
+        if self.instance:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            raise serializers.ValidationError("Este correo electrónico ya está registrado.")
+        return value
+
+    def validate_identification_number(self, value):
+        if not value:
+            return value
+        qs = User.objects.filter(identification_number=value)
+        if self.instance:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            raise serializers.ValidationError("Este número de identificación ya está registrado.")
+        return value
+
+
+class AdminSetPasswordSerializer(serializers.Serializer):
+    new_password = serializers.CharField(write_only=True, validators=[validate_password])
+    new_password2 = serializers.CharField(write_only=True)
+
+    def validate(self, attrs):
+        if attrs['new_password'] != attrs['new_password2']:
+            raise serializers.ValidationError({"new_password": "Las contraseñas no coinciden."})
+        return attrs
