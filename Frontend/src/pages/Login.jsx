@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useForm } from 'react-hook-form';
 import Header from '../components/common/Header.jsx';
@@ -7,6 +7,7 @@ import Header from '../components/common/Header.jsx';
 const Login = () => {
   const { login } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [isLoading, setIsLoading] = useState(false);
 
   const {
@@ -19,7 +20,9 @@ const Login = () => {
     setIsLoading(true);
     try {
       await login(data);
-      navigate('/');
+      const params = new URLSearchParams(location.search);
+      const next = params.get('next');
+      navigate(next || '/');
     } catch (error) {
       console.error('Error en login:', error);
     } finally {

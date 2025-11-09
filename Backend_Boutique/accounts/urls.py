@@ -6,7 +6,9 @@ from .views import (
     LogoutView,
     UserProfileView,
     ChangePasswordView,
-    UserListView
+    UserListView,
+    UserAdminDetailView,
+    AdminSetUserPasswordView,
 )
 from .views_rbac import RoleViewSet, AppPermissionViewSet, CurrentUserAuthView
 
@@ -24,5 +26,7 @@ urlpatterns = [
     path('profile/', UserProfileView.as_view(), name='profile'),
     path('change-password/', ChangePasswordView.as_view(), name='change-password'),
     path('users/', UserListView.as_view(), name='user-list'),
+    path('users/<int:pk>/', UserAdminDetailView.as_view(), name='user-detail'),
+    path('users/<int:pk>/set-password/', AdminSetUserPasswordView.as_view(), name='user-set-password'),
     path('', include(router.urls)),
 ]

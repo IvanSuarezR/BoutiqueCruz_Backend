@@ -149,7 +149,8 @@ export const AuthProvider = ({ children }) => {
     hasAnyPermission: (codes = []) => Boolean(isSuperuser || codes.some((c) => permissions.includes(c))),
     hasRole: (name) => roles.includes(name) || isSuperuser,
     hasAnyRole: (names = []) => Boolean(isSuperuser || names.some((n) => roles.includes(n))),
-    canAccessPanel: () => Boolean(isSuperuser || (user && (user.user_type === 'admin' || roles.length > 0 || permissions.length > 0))),
+  // El panel ahora se controla por permiso explícito
+  canAccessPanel: () => Boolean(isSuperuser || permissions.includes('panel.access')),
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

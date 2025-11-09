@@ -4,9 +4,11 @@ import inventoryService from '../../services/inventoryService.js';
 import toast from 'react-hot-toast';
 import ProductEditModal from '../../components/inventory/ProductEditModal.jsx';
 import logo from '../../assets/boutiquecruz1.png';
+import { useAuth } from '../../context/AuthContext.jsx';
 
 const Products = () => {
   const navigate = useNavigate();
+  const { canAccessPanel } = useAuth();
 
   // Loading states
   const [initLoading, setInitLoading] = useState(true);
@@ -144,7 +146,9 @@ const Products = () => {
           <div className="space-x-2">
             {/* <button className="btn-outline-slim" onClick={() => navigate('/')}>Inicio</button> */}
             <button className="btn-outline-slim" onClick={() => navigate('/inventory/categories')}>Categorías</button>
-            <button className="btn-outline-slim" onClick={() => navigate('/dashboard')}>Panel</button>
+            {canAccessPanel && canAccessPanel() && (
+              <button className="btn-outline-slim" onClick={() => navigate('/dashboard')}>Panel</button>
+            )}
           </div>
         </div>
       </nav>

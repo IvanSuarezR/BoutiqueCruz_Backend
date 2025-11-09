@@ -7,8 +7,11 @@ from .serializers import (
     UserSerializer, 
     RegisterSerializer, 
     LoginSerializer,
-    ChangePasswordSerializer
+    ChangePasswordSerializer,
+    AdminUserUpdateSerializer,
+    AdminSetPasswordSerializer,
 )
+from .views_rbac import OwnerRBACPermission
 
 User = get_user_model()
 
@@ -152,16 +155,64 @@ class ChangePasswordView(APIView):
         )
 
 
-class UserListView(generics.ListAPIView):
+class UserListView(generics.ListCreateAPIView):
+    """Lista paginada y creación de usuarios.
+    GET: lista paginada (page size global).
+    POST: crea nuevo usuario (solo admin/owner/superuser) usando RegisterSerializer
+    con user_type por defecto (customer) salvo que se especifique.
+    Otros tipos solo pueden ver su propio perfil en listado (no crear).
     """
-    Vista para listar todos los usuarios (solo admin)
-    """
-    queryset = User.objects.all()
-    serializer_class = UserSerializer
+    queryset = User.objects.all().order_by('-created_at')
     permission_classes = [permissions.IsAuthenticated]
-    
+
+    def get_serializer_class(self):
+        if self.request.method == 'POST':
+            return RegisterSerializer
+        return UserSerializer
+
     def get_queryset(self):
-        # Solo admin puede ver todos los usuarios
-        if self.request.user.user_type == 'admin' or self.request.user.is_staff:
-            return User.objects.all()
-        return User.objects.filter(id=self.request.user.id)
+        u = self.request.user
+        if getattr(u, 'is_superuser', False) or u.user_type in ['admin', 'owner'] or u.is_staff:
+            return self.queryset
+        return self.queryset.filter(id=u.id)
+
+    def create(self, request, *args, **kwargs):
+        # Restringir creación a admin/owner/superuser
+        u = request.user
+        if not (getattr(u, 'is_superuser', False) or u.user_type in ['admin', 'owner'] or u.is_staff):
+            return Response({'detail': 'No autorizado para crear usuarios.'}, status=status.HTTP_403_FORBIDDEN)
+        return super().create(request, *args, **kwargs)
+
+
+class UserAdminDetailView(generics.RetrieveUpdateDestroyAPIView):
+    queryset = User.objects.all()
+    permission_classes = [permissions.IsAuthenticated & OwnerRBACPermission]
+
+    def get_serializer_class(self):
+        if self.request.method in ['PUT', 'PATCH']:
+            return AdminUserUpdateSerializer
+        return UserSerializer
+
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', True)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        # devolver vista completa del usuario
+        return Response(UserSerializer(instance).data)
+
+
+class AdminSetUserPasswordView(APIView):
+    permission_classes = [permissions.IsAuthenticated & OwnerRBACPermission]
+
+    def post(self, request, pk):
+        try:
+            user = User.objects.get(pk=pk)
+        except User.DoesNotExist:
+            return Response({"detail": "Usuario no encontrado"}, status=status.HTTP_404_NOT_FOUND)
+        serializer = AdminSetPasswordSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user.set_password(serializer.validated_data['new_password'])
+        user.save()
+        return Response({"message": "Contraseña actualizada"}, status=status.HTTP_200_OK)
