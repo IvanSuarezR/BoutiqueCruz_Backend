@@ -49,7 +49,14 @@ function App() {
           <Route path="/unisex/:cat" element={<Browse />} />
           <Route path="/producto/:id" element={<ProductDetail />} />
           <Route path="/cart" element={<Cart />} />
-          <Route path="/checkout" element={<Checkout />} />
+          <Route
+            path="/checkout"
+            element={
+              <PrivateRoute>
+                <Checkout />
+              </PrivateRoute>
+            }
+          />
           
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
@@ -75,7 +82,7 @@ function App() {
           <Route
             path="/admin/roles"
             element={
-              <PrivateRoute requirePanel allowedUserTypes={["admin"]}>
+              <PrivateRoute requirePanel allowedUserTypes={["admin","owner"]}>
                 <Roles />
               </PrivateRoute>
             }
@@ -83,7 +90,7 @@ function App() {
           <Route
             path="/inventory"
             element={
-              <PrivateRoute requirePanel allowedUserTypes={["admin"]}>
+              <PrivateRoute requirePanel allowedUserTypes={["admin","owner"]}>
                 <Products />
               </PrivateRoute>
             }
@@ -91,7 +98,7 @@ function App() {
           <Route
             path="/inventory/categories"
             element={
-              <PrivateRoute requirePanel allowedUserTypes={["admin"]}>
+              <PrivateRoute requirePanel allowedUserTypes={["admin","owner"]}>
                 <Categories />
               </PrivateRoute>
             }

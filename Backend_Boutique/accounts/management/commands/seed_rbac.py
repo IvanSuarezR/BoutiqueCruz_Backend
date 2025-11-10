@@ -13,6 +13,8 @@ DEFAULT_PERMISSIONS = [
     {"code": "roles.manage", "name": "Gestionar roles", "description": "Crear, editar, asignar y eliminar roles.", "actions": ["create", "update", "assign", "delete"]},
     {"code": "permissions.view", "name": "Ver permisos", "description": "Puede ver permisos de la aplicación.", "actions": ["view"]},
     {"code": "permissions.manage", "name": "Gestionar permisos", "description": "Crear, editar y asignar permisos.", "actions": ["create", "update", "assign", "delete"]},
+    # Panel access
+    {"code": "panel.access", "name": "Acceder al panel", "description": "Puede ver y entrar al botón/página de Panel", "actions": ["enter"]},
 
     # Inventory
     {"code": "inventory.view", "name": "Ver inventario", "description": "Acceso a ver productos e inventario.", "actions": ["view"]},
@@ -33,39 +35,43 @@ DEFAULT_PERMISSIONS = [
 
 DEFAULT_ROLES = [
     {
-        "name": "Owner",
+        "name": "Dueño",
         "description": "Dueño de la boutique con control total del panel (excepto panel admin de Django)",
         "permissions": [
             "users.view", "users.manage",
             "roles.view", "roles.manage",
             "permissions.view", "permissions.manage",
+            "panel.access",
             "inventory.view", "inventory.manage",
             "sales.view", "sales.create", "sales.refund",
             "reports.view", "settings.manage",
         ],
     },
     {
-        "name": "Seller",
+        "name": "Vendedor",
         "description": "Vendedor con permisos para registrar ventas y ver inventario",
         "permissions": [
             "inventory.view",
             "sales.view", "sales.create",
             "reports.view",
+            "panel.access",
         ],
     },
     {
-        "name": "Inventory Manager",
+        "name": "Gestor de Inventario",
         "description": "Gestor de inventario (ABM de productos y stock)",
         "permissions": [
             "inventory.view", "inventory.manage",
             "reports.view",
+            "panel.access",
         ],
     },
     {
-        "name": "Viewer",
+        "name": "Solo Lectura",
         "description": "Solo lectura de catálogos y reportes",
         "permissions": [
             "inventory.view", "sales.view", "reports.view",
+            # Observadores no acceden al panel administrador
         ],
     },
 ]
@@ -114,6 +120,30 @@ class Command(BaseCommand):
             code_to_perm[p["code"]] = perm
 
         self.stdout.write(self.style.SUCCESS(f"Permisos - creados: {created_count}, actualizados: {updated_count}"))
+
+        # Renombrar roles existentes en inglés a español (idempotente)
+        RENAME_MAP = {
+            "Owner": "Dueño",
+            "Seller": "Vendedor",
+            "Inventory Manager": "Gestor de Inventario",
+            "Viewer": "Solo Lectura",
+        }
+        for old_name, new_name in RENAME_MAP.items():
+            try:
+                old_role = Role.objects.get(name=old_name)
+            except Role.DoesNotExist:
+                continue
+            # Si ya existe el nuevo nombre, marcamos el viejo como inactivo para evitar duplicados
+            if Role.objects.filter(name=new_name).exists():
+                if old_role.is_active:
+                    old_role.is_active = False
+                    old_role.save(update_fields=["is_active"])
+                continue
+            # Renombrar manteniendo relaciones y permisos
+            old_role.name = new_name
+            if not old_role.is_active:
+                old_role.is_active = True
+            old_role.save()
 
         # Crear/actualizar roles y asignar permisos
         roles_created = 0

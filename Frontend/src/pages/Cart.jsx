@@ -19,13 +19,21 @@ const Cart = () => {
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2 space-y-4">
-              {items.map(item => (
+              {items.map(item => {
+                const availability = item.availability;
+                let badge = null;
+                if (availability) {
+                  if (availability.status === 'out') badge = <span className="inline-block px-2 py-0.5 text-[10px] bg-red-600 text-white">Sin stock</span>;
+                  else if (availability.status === 'partial') badge = <span className="inline-block px-2 py-0.5 text-[10px] bg-amber-500 text-white">Stock parcial ({availability.available})</span>;
+                }
+                return (
                 <div key={item.key} className="border border-gray-200 p-3 flex gap-4">
                   <div className="w-20 h-20 bg-gray-50 border border-gray-200 flex items-center justify-center overflow-hidden">
                     {item.image ? <img src={item.image} alt={item.name} className="w-full h-full object-cover" /> : <span className="text-xs text-gray-400">Sin imagen</span>}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="font-medium text-sm line-clamp-2">{item.name}</div>
+                    <div className="mt-1">{badge}</div>
                     <div className="text-xs text-gray-500 mt-0.5">Bs. {item.price.toFixed(2)}</div>
                     <div className="flex items-center gap-3 mt-2">
                       <label className="text-xs text-gray-500">Cantidad:</label>
@@ -48,8 +56,15 @@ const Cart = () => {
                     )}
                   </div>
                   <div className="text-sm font-medium whitespace-nowrap">Bs. {(item.price * item.qty).toFixed(2)}</div>
+                  {availability && availability.status === 'partial' && availability.available > 0 && availability.available < item.qty && (
+                    <button
+                      className="mt-2 text-[10px] underline text-amber-600"
+                      onClick={() => updateQty(item.key, availability.available)}
+                    >Ajustar a {availability.available}</button>
+                  )}
                 </div>
-              ))}
+                );
+              })}
             </div>
             <div className="space-y-4">
               <div className="border border-gray-200 p-4">
@@ -66,7 +81,7 @@ const Cart = () => {
                   <span>Total</span>
                   <span>Bs. {totals.total.toFixed(2)}</span>
                 </div>
-                <button className="btn btn-primary w-full mt-2" onClick={() => navigate('/checkout')}>Finalizar compra</button>
+                <button className="btn btn-primary w-full mt-2" onClick={() => navigate('/checkout')}>Comprar</button>
                 <button className="btn-outline-slim w-full mt-2" onClick={clearCart}>Vaciar carrito</button>
               </div>
               <div className="text-xs text-gray-500 leading-relaxed">

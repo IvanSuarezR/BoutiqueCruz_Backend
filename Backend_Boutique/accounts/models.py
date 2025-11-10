@@ -15,9 +15,10 @@ class CustomUser(AbstractUser):
     
     USER_TYPE_CHOICES = [
         ('admin', 'Administrador'),
+        ('owner', 'Dueño'),  # reflejar rol Owner asignado
         ('seller', 'Vendedor'),
-        ('customer', 'Cliente'),
         ('supplier', 'Proveedor'),
+        ('customer', 'Cliente'),
     ]
     
     # Campos adicionales
@@ -138,3 +139,33 @@ def user_has_permission(user: 'CustomUser', code: str) -> bool:
 
 def user_roles(user: 'CustomUser'):
     return list(user.roles.filter(is_active=True).values_list('name', flat=True))
+
+
+PRIORITY_ROLE_MAPPING = [
+    ('admin', ['admin', 'administrador', 'superadmin']),
+    ('owner', ['owner', 'dueño']),
+    ('seller', ['seller', 'vendedor']),
+    ('supplier', ['supplier', 'proveedor']),
+    ('customer', ['customer', 'cliente']),
+]
+
+def set_user_type_from_roles(user: 'CustomUser'):
+    """Deriva y actualiza user_type en base a los roles asignados.
+    Prioridad: admin > owner > seller > supplier > customer.
+    Superusuario siempre permanece 'admin'.
+    """
+    if not user.is_authenticated:
+        return
+    if getattr(user, 'is_superuser', False):  # desarrollador
+        if user.user_type != 'admin':
+            user.user_type = 'admin'
+        return
+    role_names = [r.lower() for r in user_roles(user)]
+    for target_type, aliases in PRIORITY_ROLE_MAPPING:
+        if any(r in aliases for r in role_names):
+            if user.user_type != target_type:
+                user.user_type = target_type
+            return
+    # Si no coincide ninguno, mantener valor existente (default 'customer')
+    if not user.user_type:
+        user.user_type = 'customer'

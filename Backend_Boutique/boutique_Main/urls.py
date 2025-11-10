@@ -19,8 +19,12 @@ urlpatterns = [
     # API endpoints
     path('api/auth/', include('accounts.urls')),
     path('api/inventory/', include('inventory.urls')),
+<<<<<<< HEAD
     path('api/assistant/', include('assistant.urls')),
     path('api/reports/', include('reports.urls')),
+=======
+    path('api/', include('orders.urls')),
+>>>>>>> 8b0ac2af53cd1fa6871846b554ce078ce7cd99d9
     path('api/auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
 ]
 

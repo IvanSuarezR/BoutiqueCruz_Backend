@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Django/Python
 *.pyc
 __pycache__/
@@ -16,3 +17,6 @@ node_modules/
 # OS
 .DS_Store
 Thumbs.db
+=======
+.env
+>>>>>>> 8b0ac2af53cd1fa6871846b554ce078ce7cd99d9
