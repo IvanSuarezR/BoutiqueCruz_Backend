@@ -1,0 +1,31 @@
+# Environment variables
+.env
+*.env
+
+# Custom folders
+mejoras/
+
+# Python
+*.pyc
+__pycache__/
+*.pyo
+*.pyd
+venv/
+env/
+ENV/
+
+# Node
+node_modules/
+dist/
+
+# Database
+*.sqlite3
+*.db
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
