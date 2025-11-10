@@ -2,6 +2,8 @@ import Header from '../components/common/Header.jsx';
 import { useCart } from '../context/CartContext.jsx';
 import { useNavigate, Link } from 'react-router-dom';
 import { useState, useEffect, useMemo } from 'react';
+import {loadStripe} from '@stripe/stripe-js';
+import {Elements, CardElement, useStripe, useElements} from '@stripe/react-stripe-js';
 import orderService from '../services/orderService.js';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -82,7 +84,12 @@ const Checkout = () => {
 
   const startOrder = async () => {
     if (!items.length) return null;
-    const payloadItems = items.map(i => ({ product_id: i.id, quantity: i.qty }));
+    const payloadItems = items.map(i => ({
+      product_id: i.id,
+      quantity: i.qty,
+      variant_id: i.variantId || null,
+      size_label: i.selectedSize || null,
+    }));
     const data = await orderService.start(payloadItems);
     setOrder(data);
     return data;
@@ -117,7 +124,35 @@ const Checkout = () => {
     } finally { setLoading(false); }
   };
 
-  const confirmOrder = async () => {
+  // Stripe logic
+  const stripePromise = useMemo(()=>{
+    const pk = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
+    return pk ? loadStripe(pk) : null;
+  },[]);
+  // Mantener opciones estables para evitar remount del <Elements>
+  const elementsOptions = useMemo(() => ({ locale: 'es' }), []);
+
+  const isStripeSelected = useMemo(()=>{
+    const pm = paymentMethods.find(x=>x.id===selectedPayment);
+    if (!pm) return false;
+    // Acepta por code o por proveedor gateway
+    return pm.code === 'STRIPE' || pm.gateway_provider === 'stripe' || (pm.type === 'GATEWAY' && pm.name?.toLowerCase().includes('stripe'));
+  },[paymentMethods, selectedPayment]);
+
+  // Etiquetas amigables de métodos de pago
+  const sanitizeName = (name) => {
+    if (!name) return '';
+    return name.replace(/\(modo prueba\)/ig, '').trim();
+  };
+  const formatPaymentLabel = (pm) => {
+    if (!pm) return '';
+    const stripeLike = pm.code === 'STRIPE' || pm.gateway_provider === 'stripe' || (pm.type === 'GATEWAY' && pm.name?.toLowerCase().includes('stripe'));
+    if (stripeLike) return 'Tarjeta';
+    if (pm.type === 'COD') return 'En efectivo';
+    return sanitizeName(pm.name || '');
+  };
+
+  const confirmNonStripe = async () => {
     if (!order) return;
     setConfirming(true);
     try {
@@ -127,14 +162,92 @@ const Checkout = () => {
       clearCart();
       navigate('/');
     } catch (e) {
-      if (e.response?.data?.errors) toast.error('Stock insuficiente'); else toast.error('No se pudo confirmar');
+      if (e.response?.data?.errors) toast.error('Stock insuficiente'); else toast.error('Error confirmando');
     } finally { setConfirming(false); }
   };
+
+  // Wrapper para loggear montajes/desmontajes del CardElement
+  // Componente para usar SOLO Stripe Checkout hospedado
+  const StripeCheckoutConfirm = ({ order }) => {
+    const [loadingCheckout, setLoadingCheckout] = useState(false);
+    const startHostedCheckout = async () => {
+      if (loadingCheckout) return;
+      setLoadingCheckout(true);
+      try {
+        const origin = window.location.origin + '/checkout';
+        const data = await orderService.createStripeCheckout(order.id, origin);
+        if (data?.url) {
+          window.location.href = data.url;
+        } else {
+          toast.error('Checkout no disponible');
+        }
+      } catch (e) {
+        toast.error('Error iniciando Stripe Checkout');
+      } finally {
+        setLoadingCheckout(false);
+      }
+    };
+    return (
+      <div className="flex flex-col gap-2">
+        <button type="button" className="btn text-xs" onClick={startHostedCheckout} disabled={loadingCheckout}>
+          {loadingCheckout ? 'Redirigiendo…' : 'Confirmar pedido'}
+        </button>
+        <button type="button" className="btn-outline-slim text-[11px]" onClick={()=>setStep(1)} disabled={loadingCheckout}>Volver</button>
+        <span className="text-[10px] text-gray-400">Serás redirigido a la página segura de pago y volverás automáticamente.</span>
+      </div>
+    );
+  };
+
+  const confirmOrder = async () => {
+    if (isStripeSelected) return; // con Stripe usamos Checkout hospedado
+    return confirmNonStripe();
+  };
+
+  // Stripe Checkout (hosted): si query param session_id viene al volver de Stripe
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const sessionId = params.get('session_id');
+    const success = params.get('success');
+    const oid = params.get('order_id');
+    if (sessionId && success === '1' && oid) {
+      const key = `stripe_session_processed_${sessionId}`;
+      if (sessionStorage.getItem(key)) {
+        // ya procesado
+        return;
+      }
+      (async () => {
+        try {
+          const data = await orderService.confirmWithSession(oid, sessionId);
+          setOrder(data);
+          toast.success('Pago confirmado');
+          clearCart();
+          navigate('/');
+        } catch (e) {
+          toast.error('No se pudo confirmar sesión');
+        }
+      })();
+      // marcar como procesado y limpiar la URL para evitar re-disparo
+      sessionStorage.setItem(key, '1');
+      const url = new URL(window.location.href);
+      url.searchParams.delete('session_id');
+      url.searchParams.delete('success');
+      url.searchParams.delete('order_id');
+      window.history.replaceState({}, document.title, url.toString());
+    }
+  }, [clearCart, navigate]);
 
   useEffect(() => {
     if (user) loadForForm();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
+
+  // Si no hay preferencia de pago, elegir Stripe por defecto si existe
+  useEffect(()=>{
+    if (!selectedPayment && paymentMethods?.length){
+      const stripePm = paymentMethods.find(pm => pm.code === 'STRIPE' || pm.gateway_provider === 'stripe' || (pm.type==='GATEWAY' && pm.name?.toLowerCase().includes('stripe')));
+      if (stripePm) setSelectedPayment(stripePm.id);
+    }
+  },[paymentMethods, selectedPayment]);
 
   // Crear dirección (modal)
   const handleCreateAddress = async (payload) => {
@@ -212,7 +325,32 @@ const Checkout = () => {
                       </div>
                     </div>
                   )}
-              {/* Modales dirección */}
+              
+
+                  <div className="space-y-2">
+                    <h3 className="text-sm font-medium">Método de pago</h3>
+                    {paymentMethods.map(pm => {
+                      const stripeLike = pm.code === 'STRIPE' || pm.gateway_provider === 'stripe' || (pm.type === 'GATEWAY' && pm.name?.toLowerCase().includes('stripe'));
+                      return (
+                        <label key={pm.id} className={`flex items-start gap-2 text-sm border p-2 cursor-pointer ${stripeLike ? 'border-emerald-500' : ''}`}>
+                          <input type="radio" name="pay" checked={selectedPayment === pm.id} onChange={() => setSelectedPayment(pm.id)} />
+                          <span className="flex-1">
+                            <strong>{formatPaymentLabel(pm)}</strong>
+                            {pm.instructions && <span className="text-xs text-gray-500 block mt-1">{pm.instructions}</span>}
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
+
+                  <div className="flex gap-2">
+                    <button type="button" className="btn-outline-slim text-xs" onClick={()=>navigate('/cart')}>Volver al carrito</button>
+                    <button type="submit" className="btn text-xs" disabled={loading}>{loading ? 'Guardando…' : 'Continuar'}</button>
+                  </div>
+                </form>
+              )}
+
+              {/* Modales dirección (fuera del <form> para evitar submits anidados) */}
               <AddressModal
                 open={showAddModal}
                 onClose={()=>setShowAddModal(false)}
@@ -230,25 +368,6 @@ const Checkout = () => {
                 title="Editar dirección"
               />
 
-                  <div className="space-y-2">
-                    <h3 className="text-sm font-medium">Método de pago</h3>
-                    {paymentMethods.map(pm => (
-                      <label key={pm.id} className="flex items-start gap-2 text-sm border p-2 cursor-pointer">
-                        <input type="radio" name="pay" checked={selectedPayment === pm.id} onChange={() => setSelectedPayment(pm.id)} />
-                        <span className="flex-1">
-                          <strong>{pm.name}</strong>{pm.instructions && <span className="text-xs text-gray-500 block mt-1">{pm.instructions}</span>}
-                        </span>
-                      </label>
-                    ))}
-                  </div>
-
-                  <div className="flex gap-2">
-                    <button type="button" className="btn-outline-slim text-xs" onClick={()=>navigate('/cart')}>Volver al carrito</button>
-                    <button type="submit" className="btn text-xs" disabled={loading}>{loading ? 'Guardando…' : 'Continuar'}</button>
-                  </div>
-                </form>
-              )}
-
               {step === 2 && order && (
                 <div className="card-slim p-4 space-y-4">
                   <h2 className="text-lg font-medium">Revisar y confirmar</h2>
@@ -258,12 +377,20 @@ const Checkout = () => {
                     {order.shipping_address_snapshot && (
                       <div><strong>Dirección:</strong> {order.shipping_address_snapshot?.line1}, {order.shipping_address_snapshot?.city}</div>
                     )}
-                    <div><strong>Pago:</strong> {order.payment_method_name}</div>
+                    <div><strong>Pago:</strong> {(() => { const pm = paymentMethods.find(x=>x.id===selectedPayment); return pm ? formatPaymentLabel(pm) : sanitizeName(order.payment_method_name); })()}</div>
                   </div>
-                  <div className="flex gap-2">
-                    <button className="btn-outline-slim text-xs" onClick={()=>setStep(1)}>Volver</button>
-                    <button className="btn text-xs" disabled={confirming} onClick={confirmOrder}>{confirming ? 'Confirmando…' : 'Confirmar pedido'}</button>
-                  </div>
+                  {!isStripeSelected && (
+                    <div className="flex gap-2">
+                      <button className="btn-outline-slim text-xs" onClick={()=>setStep(1)}>Volver</button>
+                      <button className="btn text-xs" disabled={confirming} onClick={confirmOrder}>{confirming ? 'Confirmando…' : 'Confirmar pedido'}</button>
+                    </div>
+                  )}
+                  {isStripeSelected && order && (
+                    <StripeCheckoutConfirm order={order} />
+                  )}
+                  {isStripeSelected && !stripePromise && (
+                    <div className="text-xs text-red-600">Stripe no configurado (env VITE_STRIPE_PUBLISHABLE_KEY faltante).</div>
+                  )}
                 </div>
               )}
             </div>

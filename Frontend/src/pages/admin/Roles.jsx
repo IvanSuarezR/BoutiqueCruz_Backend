@@ -372,6 +372,13 @@ const Roles = () => {
       // Asignar rol seleccionado (si hay)
       if (newUser?.id && createUserRoleId) {
         await rbacService.assignUsersToRole(createUserRoleId, [newUser.id]);
+        // Si se asignó un rol distinto de 'Cliente', remover el rol 'Cliente' por defecto para no duplicar
+        const cliente = roles.find(r => (r.name || '').toLowerCase() === 'cliente' || (r.name || '').toLowerCase() === 'customer');
+        if (cliente && cliente.id !== createUserRoleId) {
+          try {
+            await rbacService.revokeUsersFromRole(cliente.id, [newUser.id]);
+          } catch(_){/* silencioso */}
+        }
       }
       toast.success('Usuario creado');
       setIsCreateUserModalOpen(false);

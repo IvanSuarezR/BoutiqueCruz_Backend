@@ -8,6 +8,7 @@ import Browse from './pages/Browse.jsx';
 import Login from './pages/Login.jsx';
 import Register from './pages/Register.jsx';
 import Dashboard from './pages/Dashboard.jsx';
+import Sales from './pages/Sales.jsx';
 import Profile from './pages/Profile.jsx';
 import Roles from './pages/admin/Roles.jsx';
 import Products from './pages/inventory/Products.jsx';
@@ -15,6 +16,7 @@ import Categories from './pages/inventory/Categories.jsx';
 import Cart from './pages/Cart.jsx';
 import ProductDetail from './pages/ProductDetail.jsx';
 import Checkout from './pages/Checkout.jsx';
+import Pos from './pages/Pos.jsx';
 // import './App.css';
 
 function App() {
@@ -74,6 +76,22 @@ function App() {
             element={
               <PrivateRoute requirePanel>
                 <Dashboard />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/sales"
+            element={
+              <PrivateRoute requirePanel allowedUserTypes={["admin","owner","seller"]}>
+                <Sales />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/pos"
+            element={
+              <PrivateRoute requirePanel allowedUserTypes={["admin","owner","seller"]}>
+                <Pos />
               </PrivateRoute>
             }
           />

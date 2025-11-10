@@ -28,6 +28,7 @@ class PaymentMethodSerializer(serializers.ModelSerializer):
 class OrderItemInputSerializer(serializers.Serializer):
     product_id = serializers.IntegerField()
     variant_id = serializers.IntegerField(required=False, allow_null=True)
+    size_label = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     quantity = serializers.IntegerField(min_value=1)
 
 
@@ -35,6 +36,11 @@ class OrderSerializer(serializers.ModelSerializer):
     items = serializers.SerializerMethodField(read_only=True)
     shipping_method_name = serializers.CharField(source='shipping_method.name', read_only=True)
     payment_method_name = serializers.CharField(source='payment_method.name', read_only=True)
+    status_label = serializers.SerializerMethodField(read_only=True)
+    user_username = serializers.CharField(source='user.username', read_only=True)
+    user_email = serializers.CharField(source='user.email', read_only=True)
+    user_first_name = serializers.CharField(source='user.first_name', read_only=True)
+    user_last_name = serializers.CharField(source='user.last_name', read_only=True)
 
     class Meta:
         model = Order
@@ -42,24 +48,39 @@ class OrderSerializer(serializers.ModelSerializer):
             'id','status','currency','total_items','subtotal','shipping_cost','payment_fee','tax_total','grand_total',
             'shipping_method','shipping_method_name','payment_method','payment_method_name','shipping_address','shipping_address_snapshot',
             'placed_at','paid_at','canceled_at','external_payment_id','external_payment_status','notes','customer_note','created_at','updated_at',
-            'items'
+            'items','status_label','inventory_deducted','inventory_restored',
+            'user_username','user_email','user_first_name','user_last_name'
         ]
         read_only_fields = ['id','status','total_items','subtotal','shipping_cost','payment_fee','tax_total','grand_total','placed_at','paid_at','canceled_at','external_payment_id','external_payment_status','created_at','updated_at','items']
 
     def get_items(self, obj):
-        return [
-            {
+        results = []
+        for it in obj.items.select_related('variant','product').all():
+            results.append({
                 'id': it.id,
                 'product_id': it.product_id,
                 'variant_id': it.variant_id,
+                'variant_size': (it.variant.size if it.variant else None),
                 'sku': it.sku_cache,
                 'name': it.product_name_cache,
                 'unit_price': it.unit_price,
                 'quantity': it.quantity,
                 'line_subtotal': it.line_subtotal,
-            }
-            for it in obj.items.all()
-        ]
+            })
+        return results
+
+    def get_status_label(self, obj):
+        mapping = {
+            'DRAFT': 'Borrador',
+            'PENDING_PAYMENT': 'Pendiente de pago',
+            'PAID': 'Pagado',
+            'AWAITING_DISPATCH': 'En preparación',
+            'SHIPPED': 'Enviada',
+            'CANCELED': 'Cancelado',
+            'DELIVERED': 'Entregado',
+            'REFUNDED': 'Reembolsado',
+        }
+        return mapping.get(getattr(obj, 'status', None), getattr(obj, 'status', ''))
 
 
 class StartOrderSerializer(serializers.Serializer):
@@ -87,6 +108,10 @@ class SetPaymentSerializer(serializers.Serializer):
 
 class ConfirmOrderSerializer(serializers.Serializer):
     confirm = serializers.BooleanField()
+    # For gateway payments like Stripe, the client can provide the PaymentIntent id
+    payment_intent_id = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    # Or, when using Stripe Checkout, the Checkout Session id
+    checkout_session_id = serializers.CharField(required=False, allow_blank=True, allow_null=True)
 
 
 class CartItemSerializer(serializers.ModelSerializer):

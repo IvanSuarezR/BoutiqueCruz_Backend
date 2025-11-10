@@ -16,7 +16,9 @@
     "react-hook-form": "^7.66.0",
     "react-hot-toast": "^2.6.0",
     "react-router-dom": "^7.9.5",
-    "tailwind": "^2.3.1"
+    "tailwind": "^2.3.1",
+    "@stripe/stripe-js": "^4.7.0",
+    "@stripe/react-stripe-js": "^2.6.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.25.0",

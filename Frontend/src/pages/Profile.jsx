@@ -322,7 +322,7 @@ const Profile = () => {
                   {orders.filter(o=>o.status !== 'DRAFT').map(o => (
                     <tr key={o.id} className="hover:bg-gray-50">
                       <td className="p-2 border">{o.id}</td>
-                      <td className="p-2 border">{o.status}</td>
+                      <td className="p-2 border">{o.status_label || (o.status === 'AWAITING_DISPATCH' ? 'En preparación' : o.status === 'PENDING_PAYMENT' ? 'Pendiente de pago' : o.status === 'CANCELED' ? 'Cancelado' : o.status === 'DELIVERED' ? 'Entregado' : o.status === 'REFUNDED' ? 'Reembolsado' : o.status)}</td>
                       <td className="p-2 border">{o.total_items}</td>
                       <td className="p-2 border">Bs. {Number(o.subtotal).toFixed(2)}</td>
                       <td className="p-2 border">Bs. {Number(o.grand_total).toFixed(2)}</td>

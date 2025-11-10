@@ -18,3 +18,6 @@ python-dotenv==1.0.1
 
 # Image processing (for ImageField)
 Pillow==11.0.0
+
+# Payments / Stripe
+stripe==5.0.0

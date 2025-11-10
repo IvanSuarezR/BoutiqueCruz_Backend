@@ -112,9 +112,14 @@ class Order(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    # Control de inventario
+    inventory_deducted = models.BooleanField(default=False, help_text="Si ya se descontó inventario para esta orden")
+    inventory_restored = models.BooleanField(default=False, help_text="Si ya se restauró inventario por cancelación/reembolso")
 
     class Meta:
         ordering = ['-created_at']
+        verbose_name = 'Venta'
+        verbose_name_plural = 'Ventas'
 
     def __str__(self):
         return f"Order #{self.pk} - {self.user} - {self.status}"

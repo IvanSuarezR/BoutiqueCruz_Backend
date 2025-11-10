@@ -124,6 +124,7 @@ export const CartProvider = ({ children }) => {
               colors: [],
               stock: ci.availability?.available ?? 0,
               availability: ci.availability,
+              variantId: ci.variant || null,
             }));
             dispatch({ type: 'INIT', payload: { items: normalized } });
             return;
@@ -145,6 +146,7 @@ export const CartProvider = ({ children }) => {
           colors: [],
           stock: ci.availability?.available ?? 0,
           availability: ci.availability,
+          variantId: ci.variant || null,
         }));
         dispatch({ type: 'INIT', payload: { items: normalized } });
       } catch (e) {
@@ -174,6 +176,7 @@ export const CartProvider = ({ children }) => {
           colors: [],
           stock: ci.availability?.available ?? 0,
           availability: ci.availability,
+          variantId: ci.variant || null,
         }));
         dispatch({ type: 'INIT', payload: { items: normalized } });
         return;
@@ -208,6 +211,7 @@ export const CartProvider = ({ children }) => {
             colors: [],
             stock: ci.availability?.available ?? 0,
             availability: ci.availability,
+            variantId: ci.variant || null,
           }));
           dispatch({ type: 'INIT', payload: { items: normalized } });
           return;
@@ -242,6 +246,7 @@ export const CartProvider = ({ children }) => {
             colors: [],
             stock: ci.availability?.available ?? 0,
             availability: ci.availability,
+            variantId: ci.variant || null,
           }));
           dispatch({ type: 'INIT', payload: { items: normalized } });
           return;

@@ -32,6 +32,14 @@ DEBUG = True
 
 ALLOWED_HOSTS = []
 
+# Stripe configuration (test keys). Provide these in .env file:
+# STRIPE_SECRET_KEY=sk_test_...
+# STRIPE_PUBLISHABLE_KEY=pk_test_...
+# Optional: STRIPE_CURRENCY=usd (Stripe no soporta BOB; usar conversión si necesario)
+STRIPE_SECRET_KEY = os.getenv('STRIPE_SECRET_KEY') or ''
+STRIPE_PUBLISHABLE_KEY = os.getenv('STRIPE_PUBLISHABLE_KEY') or ''
+STRIPE_CURRENCY = os.getenv('STRIPE_CURRENCY') or 'usd'
+
 
 # Application definition
 
@@ -51,6 +59,7 @@ INSTALLED_APPS = [
     'accounts',
     'inventory',
     'orders',
+    'sales',
 ]
 
 MIDDLEWARE = [

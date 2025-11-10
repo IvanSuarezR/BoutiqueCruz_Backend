@@ -20,8 +20,27 @@ const orderService = {
     const res = await axiosInstance.patch(`/orders/${orderId}/set_payment_method/`, { payment_method_id: paymentMethodId });
     return res.data;
   },
-  confirm: async (orderId) => {
-    const res = await axiosInstance.post(`/orders/${orderId}/confirm/`, { confirm: true });
+  createStripeIntent: async (orderId) => {
+    const res = await axiosInstance.post(`/orders/${orderId}/create_intent/`, {});
+    return res.data;
+  },
+  createStripeCheckout: async (orderId, returnUrl) => {
+    const res = await axiosInstance.post(`/orders/${orderId}/create_checkout_session/`, { return_url: returnUrl });
+    return res.data; // { id, url }
+  },
+  confirm: async (orderId, payment_intent_id = null) => {
+    const payload = { confirm: true };
+    if (payment_intent_id) payload.payment_intent_id = payment_intent_id;
+    const res = await axiosInstance.post(`/orders/${orderId}/confirm/`, payload);
+    return res.data;
+  },
+  setCustomer: async (orderId, user_id) => {
+    const res = await axiosInstance.patch(`/orders/${orderId}/set_customer/`, { user_id });
+    return res.data;
+  },
+  confirmWithSession: async (orderId, checkout_session_id) => {
+    const payload = { confirm: true, checkout_session_id };
+    const res = await axiosInstance.post(`/orders/${orderId}/confirm/`, payload);
     return res.data;
   },
   listShipping: async () => {
@@ -50,6 +69,11 @@ const orderService = {
   },
   getOrder: async (orderId) => {
     const res = await axiosInstance.get(`/orders/${orderId}/`);
+    return res.data;
+  },
+  updateOrder: async (orderId, payload) => {
+    // Generic partial update (e.g., notes)
+    const res = await axiosInstance.patch(`/orders/${orderId}/`, payload);
     return res.data;
   },
   // Cart operations

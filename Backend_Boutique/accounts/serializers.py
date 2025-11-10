@@ -86,10 +86,13 @@ class RegisterSerializer(serializers.ModelSerializer):
     
     def create(self, validated_data):
         from uuid import uuid4
+        from .models import Role, set_user_type_from_roles
 
         # Retiramos campos de solo escritura
         validated_data.pop('password2')
         password = validated_data.pop('password')
+        # Forzar que no se asigne user_type arbitrario desde el registro
+        validated_data.pop('user_type', None)
 
         # Defaults para nombre y apellido si no se enviaron
         validated_data['first_name'] = (validated_data.get('first_name') or '').strip()
@@ -111,6 +114,20 @@ class RegisterSerializer(serializers.ModelSerializer):
         user = User.objects.create(**validated_data)
         user.set_password(password)
         user.save()
+        # Asignar rol "Cliente" por defecto
+        try:
+            role = Role.objects.filter(name__iexact='Cliente').first()
+            if not role:
+                role = Role.objects.create(name='Cliente', description='Rol por defecto para clientes', is_active=True)
+            user.roles.add(role)
+        except Exception:
+            pass
+        # Derivar y guardar user_type desde roles (admin>owner>seller>supplier>customer)
+        try:
+            set_user_type_from_roles(user)
+            user.save(update_fields=['user_type'])
+        except Exception:
+            pass
         return user
 
 

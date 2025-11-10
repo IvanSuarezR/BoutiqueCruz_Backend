@@ -30,7 +30,8 @@ class CategoryViewSet(viewsets.ModelViewSet):
             return qs
         q = request.query_params.get('q')
         if q:
-            qs = qs.filter(name__icontains=q)
+            # Permitir búsqueda por nombre o SKU para soportar caja/POS
+            qs = qs.filter(models.Q(name__icontains=q) | models.Q(sku__icontains=q))
         is_active = request.query_params.get('is_active')
         if is_active in ('true', 'True', '1'):
             qs = qs.filter(is_active=True)
@@ -85,9 +86,13 @@ class ProductViewSet(viewsets.ModelViewSet):
                 qs = qs.filter(category_id=int(category))
             except ValueError:
                 pass
+        # Precise SKU search support
+        sku = request.query_params.get('sku')
+        if sku:
+            qs = qs.filter(models.Q(sku__iexact=sku) | models.Q(sku__icontains=sku))
         q = request.query_params.get('q')
         if q:
-            qs = qs.filter(name__icontains=q)
+            qs = qs.filter(models.Q(name__icontains=q) | models.Q(sku__icontains=q))
         is_active = request.query_params.get('is_active')
         if is_active in ('true', 'True', '1'):
             qs = qs.filter(is_active=True)

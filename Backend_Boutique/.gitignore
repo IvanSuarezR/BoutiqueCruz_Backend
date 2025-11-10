@@ -1,1 +1,3 @@
 .env
+.env.*
+# Removed .env.example (no longer tracked)

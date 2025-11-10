@@ -1,10 +1,24 @@
 import Header from '../components/common/Header.jsx';
 import { useCart } from '../context/CartContext.jsx';
 import { Link, useNavigate } from 'react-router-dom';
+import { useMemo } from 'react';
 
 const Cart = () => {
   const { items, updateQty, removeItem, clearCart, totals } = useCart();
   const navigate = useNavigate();
+  
+  // Detectar si hay items con cantidad mayor al stock disponible
+  const hasStockIssues = useMemo(() => {
+    return items.some(it => {
+      const av = it.availability;
+      if (!av) return false;
+      if (av.status === 'out') return true;
+      if (av.status === 'partial' && typeof av.available === 'number') {
+        return av.available < it.qty;
+      }
+      return false;
+    });
+  }, [items]);
 
   return (
     <div className="min-h-screen bg-white">
@@ -81,7 +95,19 @@ const Cart = () => {
                   <span>Total</span>
                   <span>Bs. {totals.total.toFixed(2)}</span>
                 </div>
-                <button className="btn btn-primary w-full mt-2" onClick={() => navigate('/checkout')}>Comprar</button>
+                <button
+                  className="btn btn-primary w-full mt-2"
+                  onClick={() => { if (!hasStockIssues) navigate('/checkout'); }}
+                  disabled={hasStockIssues}
+                  title={hasStockIssues ? 'Ajusta las cantidades al stock disponible para continuar' : ''}
+                >
+                  Comprar
+                </button>
+                {hasStockIssues && (
+                  <div className="text-[11px] text-red-600 mt-1">
+                    Algunas cantidades superan el stock disponible. Ajusta antes de continuar.
+                  </div>
+                )}
                 <button className="btn-outline-slim w-full mt-2" onClick={clearCart}>Vaciar carrito</button>
               </div>
               <div className="text-xs text-gray-500 leading-relaxed">

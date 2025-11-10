@@ -133,25 +133,27 @@ const Dashboard = () => {
               <p className="text-gray-600 text-sm">Productos y categorías</p>
             </div>
 
-            {/* Módulo Ventas */}
-            <div className="card-slim p-6 hover:bg-gray-50 transition-colors cursor-pointer">
+            {/* Módulo Caja (POS) */}
+            <div className="card-slim p-6 hover:bg-gray-50 transition-colors cursor-pointer" onClick={() => navigate('/pos')}>
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-900">Ventas</h3>
-                <svg
-                  className="w-8 h-8 text-purple-600"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"
-                  />
+                <h3 className="text-lg font-semibold text-gray-900">Caja (POS)</h3>
+                <svg className="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
                 </svg>
               </div>
-              <p className="text-gray-600 text-sm">Gestión de ventas y descuentos</p>
+              <p className="text-gray-600 text-sm">Venta rápida en tienda</p>
+            </div>
+
+            {/* Módulo Ventas (Administración) */}
+            <div className="card-slim p-6 hover:bg-gray-50 transition-colors cursor-pointer" onClick={() => navigate('/sales')}>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">Ventas</h3>
+                <svg className="w-8 h-8 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .843-3 1.882v8.236C9 19.157 10.343 20 12 20s3-.843 3-1.882V9.882C15 8.843 13.657 8 12 8z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 8c-1.657 0-3 .843-3 1.882v4.236C3 15.157 4.343 16 6 16s3-.843 3-1.882V9.882C9 8.843 7.657 8 6 8zm12 0c-1.657 0-3 .843-3 1.882v4.236C15 15.157 16.343 16 18 16s3-.843 3-1.882V9.882C21 8.843 19.657 8 18 8z" />
+                </svg>
+              </div>
+              <p className="text-gray-600 text-sm">Gestión y seguimiento de pedidos</p>
             </div>
 
             {/* Módulo Reportes */}
