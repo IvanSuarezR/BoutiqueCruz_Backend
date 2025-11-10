@@ -50,6 +50,8 @@ INSTALLED_APPS = [
     # Local apps
     'accounts',
     'inventory',
+    'assistant',
+    'reports',
 ]
 
 MIDDLEWARE = [
@@ -216,3 +218,6 @@ CORS_ALLOW_HEADERS = [
     'x-csrftoken',
     'x-requested-with',
 ]
+
+# Groq API Configuration for AI Assistant
+GROQ_API_KEY = os.getenv('GROQ_API_KEY', '')

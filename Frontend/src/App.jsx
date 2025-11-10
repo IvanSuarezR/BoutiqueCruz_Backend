@@ -3,6 +3,7 @@ import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './context/AuthContext.jsx';
 import { CartProvider } from './context/CartContext.jsx';
 import PrivateRoute from './components/common/PrivateRoute.jsx';
+import ChatAssistant from './components/common/ChatAssistant.jsx';
 import Home from './pages/Home.jsx';
 import Browse from './pages/Browse.jsx';
 import Login from './pages/Login.jsx';
@@ -12,6 +13,7 @@ import Profile from './pages/Profile.jsx';
 import Roles from './pages/admin/Roles.jsx';
 import Products from './pages/inventory/Products.jsx';
 import Categories from './pages/inventory/Categories.jsx';
+import Reports from './pages/Reports.jsx';
 import Cart from './pages/Cart.jsx';
 import ProductDetail from './pages/ProductDetail.jsx';
 import Checkout from './pages/Checkout.jsx';
@@ -94,10 +96,21 @@ function App() {
               </PrivateRoute>
             }
           />
+          <Route
+            path="/reports"
+            element={
+              <PrivateRoute requirePanel allowedUserTypes={["admin", "seller"]}>
+                <Reports />
+              </PrivateRoute>
+            }
+          />
           
           {/* Ruta 404 */}
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
+        
+        {/* Chatbot flotante disponible en todas las páginas */}
+        <ChatAssistant />
         </CartProvider>
       </AuthProvider>
     </Router>
@@ -105,10 +118,5 @@ function App() {
 }
 
 export default App;
-
-
-
-// esta es una prueba para ver si funciona git hub 
-//hola a todos
 
 
