@@ -10,15 +10,17 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@stripe/react-stripe-js": "^2.6.0",
+    "@stripe/stripe-js": "^4.7.0",
     "axios": "^1.13.1",
+    "chart.js": "^4.5.1",
     "react": "^19.1.0",
+    "react-chartjs-2": "^5.3.1",
     "react-dom": "^19.1.0",
     "react-hook-form": "^7.66.0",
     "react-hot-toast": "^2.6.0",
     "react-router-dom": "^7.9.5",
-    "tailwind": "^2.3.1",
-    "@stripe/stripe-js": "^4.7.0",
-    "@stripe/react-stripe-js": "^2.6.0"
+    "tailwind": "^2.3.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.25.0",

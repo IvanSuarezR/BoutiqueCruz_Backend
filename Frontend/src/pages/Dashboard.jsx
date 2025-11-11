@@ -157,7 +157,7 @@ const Dashboard = () => {
             </div>
 
             {/* Módulo Reportes */}
-            <div className="card-slim p-6 hover:bg-gray-50 transition-colors cursor-pointer">
+            <div className="card-slim p-6 hover:bg-gray-50 transition-colors cursor-pointer" onClick={() => navigate('/reports')}>
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-gray-900">Reportes IA</h3>
                 <svg
@@ -178,7 +178,10 @@ const Dashboard = () => {
             </div>
 
             {/* Módulo Predicción */}
-            <div className="card-slim p-6 hover:bg-gray-50 transition-colors cursor-pointer">
+            <div 
+              className="card-slim p-6 hover:bg-gray-50 transition-colors cursor-pointer"
+              onClick={() => navigate('/ml-predictions')}
+            >
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-gray-900">Predicción ML</h3>
                 <svg

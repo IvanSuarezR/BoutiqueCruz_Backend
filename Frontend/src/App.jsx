@@ -17,6 +17,9 @@ import Cart from './pages/Cart.jsx';
 import ProductDetail from './pages/ProductDetail.jsx';
 import Checkout from './pages/Checkout.jsx';
 import Pos from './pages/Pos.jsx';
+import MLPredictions from './pages/MLPredictions.jsx';
+import Reports from './pages/Reports.jsx';
+import ChatAssistant from './components/common/ChatAssistant.jsx';
 // import './App.css';
 
 function App() {
@@ -119,10 +122,30 @@ function App() {
               </PrivateRoute>
             }
           />
+          <Route
+            path="/ml-predictions"
+            element={
+              <PrivateRoute requirePanel allowedUserTypes={["admin","owner","seller"]}>
+                <MLPredictions />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/reports"
+            element={
+              <PrivateRoute requirePanel allowedUserTypes={["admin","owner","seller"]}>
+                <Reports />
+              </PrivateRoute>
+            }
+          />
           
           {/* Ruta 404 */}
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
+        
+        {/* Chat Assistant - disponible en toda la aplicación */}
+        <ChatAssistant />
+        
         </CartProvider>
       </AuthProvider>
     </Router>
@@ -131,9 +154,5 @@ function App() {
 
 export default App;
 
-
-
-// esta es una prueba para ver si funciona git hub 
-//hola a todos
 
 
