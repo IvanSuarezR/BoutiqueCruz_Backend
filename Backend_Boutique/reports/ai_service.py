@@ -98,13 +98,42 @@ class AIReportService:
         ## TABLA: inventory_stockmovement (Movimientos de Inventario)
         - id (INTEGER) PK
         - product_id (INTEGER) FK -> inventory_product
-        - variant_id (INTEGER) FK -> inventory_productvariant (nullable)
-        - user_id (INTEGER) FK -> accounts_customuser - Usuario que realizó el movimiento
+        - created_by_id (INTEGER) FK -> accounts_customuser - Usuario que realizó el movimiento
         - movement_type (VARCHAR): 'IN' (Entrada), 'OUT' (Salida), 'ADJ' (Ajuste)
         - quantity (INTEGER) - Cantidad del movimiento
-        - reason (TEXT) - Motivo del movimiento
-        - reference (VARCHAR) - Referencia (número de orden, factura, etc.)
+        - note (VARCHAR) - Nota del movimiento
         - created_at (TIMESTAMP)
+        
+        ## TABLA: orders_order (Órdenes de Compra)
+        - id (INTEGER) PK
+        - user_id (INTEGER) FK -> accounts_customuser - Cliente que realizó la orden
+        - status (VARCHAR): 'DRAFT', 'PENDING_PAYMENT', 'PAID', 'AWAITING_DISPATCH', 'SHIPPED', 'DELIVERED', 'CANCELED', 'REFUNDED'
+        - currency (VARCHAR) - Moneda (default 'BOB')
+        - total_items (INTEGER) - Total de artículos
+        - subtotal (DECIMAL) - Subtotal sin impuestos ni envío
+        - shipping_cost (DECIMAL) - Costo de envío
+        - payment_fee (DECIMAL) - Tarifa de procesamiento de pago
+        - tax_total (DECIMAL) - Total de impuestos
+        - grand_total (DECIMAL) - Total final de la orden
+        - shipping_method_id (INTEGER) FK -> orders_shippingmethod
+        - payment_method_id (INTEGER) FK -> orders_paymentmethod
+        - shipping_address_id (INTEGER) FK -> orders_address
+        - placed_at (TIMESTAMP) - Cuándo se confirmó la orden
+        - paid_at (TIMESTAMP) - Cuándo se pagó
+        - canceled_at (TIMESTAMP) - Cuándo se canceló
+        - notes (TEXT) - Notas internas
+        - customer_note (TEXT) - Nota del cliente
+        - created_at (TIMESTAMP) - Cuándo se creó la orden (incluyendo borradores)
+        - updated_at (TIMESTAMP)
+        
+        ## TABLA: orders_orderitem (Artículos de la Orden)
+        - id (INTEGER) PK
+        - order_id (INTEGER) FK -> orders_order
+        - product_id (INTEGER) FK -> inventory_product
+        - variant_id (INTEGER) FK -> inventory_productvariant (nullable)
+        - quantity (INTEGER) - Cantidad pedida
+        - unit_price (DECIMAL) - Precio unitario al momento de la compra
+        - total_price (DECIMAL) - Precio total del ítem (quantity * unit_price)
         
         NOTAS IMPORTANTES:
         - Los productos tienen stock total (product.stock) y stock por talla (productvariant.stock)

@@ -40,6 +40,9 @@ STRIPE_SECRET_KEY = os.getenv('STRIPE_SECRET_KEY') or ''
 STRIPE_PUBLISHABLE_KEY = os.getenv('STRIPE_PUBLISHABLE_KEY') or ''
 STRIPE_CURRENCY = os.getenv('STRIPE_CURRENCY') or 'usd'
 
+# Groq AI Configuration
+GROQ_API_KEY = os.getenv('GROQ_API_KEY')
+
 
 # Application definition
 
@@ -55,11 +58,15 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework_simplejwt',
     'rest_framework_simplejwt.token_blacklist',
+    'django_extensions',
     # Local apps
     'accounts',
     'inventory',
     'orders',
     'sales',
+    'ml_predictions',
+    'assistant',
+    'reports',
 ]
 
 MIDDLEWARE = [

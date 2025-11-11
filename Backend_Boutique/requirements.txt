@@ -14,10 +14,20 @@ django-cors-headers==4.6.0
 psycopg2-binary==2.9.10
 
 # Environment variables
-python-dotenv==1.0.1
+python-decouple==3.8
 
-# Image processing (for ImageField)
+# Image processing
 Pillow==11.0.0
 
-# Payments / Stripe
-stripe==5.0.0
+# Machine Learning
+scikit-learn==1.6.1
+pandas==2.2.3
+numpy==2.2.1
+joblib==1.4.2
+
+# Utilities
+django-extensions==3.2.3
+
+# Development
+ipython==8.31.0
+
