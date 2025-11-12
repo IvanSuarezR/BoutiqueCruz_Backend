@@ -37,7 +37,8 @@ RUN mkdir -p /app/staticfiles /app/media
 EXPOSE 8080
 
 # Comando de inicio directo con gunicorn
-CMD python manage.py migrate --noinput && \
+CMD python manage.py collectstatic --noinput && \
+    python manage.py migrate --noinput && \
     gunicorn boutique_Main.wsgi:application \
     --bind 0.0.0.0:$PORT \
     --workers 2 \
