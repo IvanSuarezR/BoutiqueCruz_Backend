@@ -91,7 +91,7 @@ jobs:
             --cpu 1 \
             --min-instances 0 \
             --max-instances 5 \
-            --set-env-vars VITE_API_URL=${{ needs.deploy-backend.outputs.backend_url }}
+            --set-env-vars VITE_API_URL=${{ needs.deploy-backend.outputs.backend_url }},VITE_BANNER_IMAGE_URL=${{ secrets.VITE_BANNER_IMAGE_URL }},VITE_STRIPE_PUBLISHABLE_KEY=${{ secrets.VITE_STRIPE_PUBLISHABLE_KEY }},VITE_GOOGLE_MAPS_API_KEY=${{ secrets.VITE_GOOGLE_MAPS_API_KEY }}
 
       - name: Obtener URL del Frontend
         id: get-url
