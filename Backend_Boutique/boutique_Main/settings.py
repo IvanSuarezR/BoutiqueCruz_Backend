@@ -110,7 +110,7 @@ WSGI_APPLICATION = 'boutique_Main.wsgi.application'
 
 # Database
 # Switch between PostgreSQL and SQLite via USE_POSTGRES env var
-USE_POSTGRES = os.getenv('USE_POSTGRES')
+USE_POSTGRES = os.getenv('USE_POSTGRES', 'false').lower() == 'true'
 
 if USE_POSTGRES:
     DATABASES = {
