@@ -1,8 +1,6 @@
 import axios from 'axios';
-
-// Prefer runtime vars injected via /env.js (window._env_), then fall back to Vite build-time vars
-const runtimeEnv = typeof window !== 'undefined' && window._env_ ? window._env_ : {};
-const API_URL = runtimeEnv.VITE_API_URL || import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+//  || 'http://localhost:8000/api'
+const API_URL = import.meta.env.VITE_API_URL;
 
 console.debug('Using API_URL =', API_URL);
 

@@ -36,9 +36,10 @@ jobs:
 
       - name: Desplegar Backend a Cloud Run
         run: |
-          gcloud run deploy boutique-backend \
+          gcloud run deploy ${{ env.SERVICE_NAME }} \
             --source ./Backend_Boutique \
             --region ${{ env.REGION }} \
+              echo "${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}" > /tmp/gcp-credentials.json \
             --platform managed \
             --allow-unauthenticated \
             --port 8080 \
@@ -47,8 +48,9 @@ jobs:
             --min-instances 0 \
             --max-instances 10 \
             --timeout 300 \
-            --set-env-vars "DEBUG=False,USE_POSTGRES=true,USE_GCS=${{ secrets.USE_GCS }},SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }},GROQ_API_KEY=${{ secrets.GROQ_API_KEY }},STRIPE_SECRET_KEY=${{ secrets.STRIPE_SECRET_KEY }}" \
-
+            --set-env-vars "DEBUG=False,USE_POSTGRES=true,POSTGRES_DB=${{ secrets.POSTGRES_DB }},POSTGRES_USER=${{ secrets.POSTGRES_USER }},POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }},POSTGRES_HOST=${{ secrets.POSTGRES_HOST }},POSTGRES_PORT=${{ secrets.POSTGRES_PORT }},POSTGRES_CONN_MAX_AGE=${{ secrets.POSTGRES_CONN_MAX_AGE }},STRIPE_SECRET_KEY=${{ secrets.STRIPE_SECRET_KEY }},STRIPE_PUBLISHABLE_KEY=${{ secrets.STRIPE_PUBLISHABLE_KEY }},STRIPE_CURRENCY=${{ secrets.STRIPE_CURRENCY }},GROQ_API_KEY=${{ secrets.GROQ_API_KEY }},USE_GCS=${{ secrets.USE_GCS }},GS_BUCKET_NAME=${{ secrets.GS_BUCKET_NAME }},GS_PROJECT_ID=${{ secrets.GS_PROJECT_ID }},GOOGLE_APPLICATION_CREDENTIALS=/tmp/gcp-credentials.json" \
+            --quiet
+            
       - name: Obtener URL del Backend
         id: get-url
         run: |
