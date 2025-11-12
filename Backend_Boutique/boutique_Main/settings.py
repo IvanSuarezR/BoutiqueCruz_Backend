@@ -18,7 +18,9 @@ from dotenv import load_dotenv
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Load environment variables from .env at project root (Backend_Boutique/.env)
-load_dotenv(BASE_DIR / '.env')
+# Only load in development (not in Cloud Run)
+if not os.getenv('K_SERVICE'):
+    load_dotenv(BASE_DIR / '.env')
 
 
 # Quick-start development settings - unsuitable for production
