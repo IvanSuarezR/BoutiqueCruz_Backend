@@ -29,8 +29,12 @@ COPY --from=builder /app/dist /usr/share/nginx/html
 # Copiar configuración de nginx personalizada
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
+# Copiar entrypoint para generar env.js en runtime
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
 # Exponer puerto 8080 (requerido por Cloud Run)
 EXPOSE 8080
 
-# Comando de inicio
-CMD ["nginx", "-g", "daemon off;"]
+# Usar entrypoint que crea env.js y arranca nginx
+ENTRYPOINT ["/entrypoint.sh"]
