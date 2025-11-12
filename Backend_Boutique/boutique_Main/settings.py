@@ -169,6 +169,9 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 
+# Directorio donde collectstatic almacenará los archivos estáticos en producción
+# Necesario para ejecutar `python manage.py collectstatic` (Cloud Run / Docker)
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 # Media files configuration - Google Cloud Storage
 USE_GCS = os.getenv('USE_GCS', 'False').lower() == 'true'
 
