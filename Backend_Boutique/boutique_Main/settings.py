@@ -267,7 +267,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:5173",
     "http://localhost:5174",
     "http://127.0.0.1:5174",
-    "https://boutique-frontend-238562702765.us-central1.run.app",  # Frontend desplegado en Cloud Run
+    "https://boutique-backend-st7ukzaztq-uc.a.run.app"
 ]
 
 # Agregar orígenes adicionales desde variable de entorno (para producción)
