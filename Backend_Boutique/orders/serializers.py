@@ -56,11 +56,13 @@ class OrderSerializer(serializers.ModelSerializer):
     def get_items(self, obj):
         results = []
         for it in obj.items.select_related('variant','product').all():
+            # Usar size_cache si el variant o product fueron eliminados
+            size = it.size_cache if it.size_cache else (it.variant.size if it.variant else None)
             results.append({
                 'id': it.id,
                 'product_id': it.product_id,
                 'variant_id': it.variant_id,
-                'variant_size': (it.variant.size if it.variant else None),
+                'variant_size': size,
                 'sku': it.sku_cache,
                 'name': it.product_name_cache,
                 'unit_price': it.unit_price,

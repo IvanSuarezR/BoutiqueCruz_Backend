@@ -185,7 +185,7 @@ const ProductDetail = () => {
               const goNext = () => setImageIndex((i) => Math.min(imgs.length - 1, i + 1));
               return (
                 <div className="group">
-                  <div className="aspect-[4/5] bg-gray-50 border border-gray-200 overflow-hidden flex items-center justify-center relative">
+                  <div className="aspect-square bg-gray-50 border border-gray-200 overflow-hidden flex items-center justify-center relative">
                     {imgs.length ? (
                       <img src={imgs[idx]} alt={product.name} className="w-full h-full object-cover" />
                     ) : (

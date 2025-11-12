@@ -6,43 +6,36 @@ import GCSGalleryModal from './GCSGalleryModal.jsx';
 const computeTotal = (map) => Object.values(map || {}).reduce((a, b) => a + (Number(b || 0) || 0), 0);
 
 // Mini componente para las miniaturas con reordenamiento/ eliminación / principal
-const ImageThumbnails = ({ existingImages, files, libraryItems, primaryIndex, setPrimaryIndex, setExistingImages, setFiles, setLibraryItems, setRemovedImages, setRemovedImageIds, addLibraryItemToOrder, fileInputRef, openLibrary, openGCSGallery }) => {
+const ImageThumbnails = ({ combined, primaryIndex, setPrimaryIndex, setExistingImages, setFiles, setLibraryItems, setRemovedImages, setRemovedImageIds, addLibraryItemToOrder, fileInputRef, openLibrary, openGCSGallery }) => {
   // dragIndex manejado dentro de ImageThumbnails
   const [dragIndex, setDragIndex] = useState(null);
-  const combined = [
-    ...existingImages.map((it) => (typeof it === 'string'
-      ? { type: 'existing', id: undefined, src: it }
-      : { type: 'existing', id: it?.id, src: it?.url || it?.image || it?.src })),
-    ...files.map((f) => ({ type: 'new', file: f })),
-    ...libraryItems.map((it) => ({ type: 'library', source_id: it.id, src: it.url })),
-  ].filter((x) => (x.type === 'new' ? !!x.file : !!x.src));
 
   const onRemove = (idx) => {
     const item = combined[idx];
     if (!item) return;
+    
+    // Eliminar del array correspondiente
     if (item.type === 'existing') {
-      setExistingImages((prev) => prev.filter((srcOrObj) => {
-        const url = typeof srcOrObj === 'string' ? srcOrObj : (srcOrObj?.url || srcOrObj?.image || srcOrObj?.src);
-        return url !== item.src;
-      }));
-    } else if (item.type === 'new') {
-      setFiles((prev) => prev.filter((f) => f !== item.file));
-    } else if (item.type === 'library') {
-      setLibraryItems((prev) => prev.filter((x) => x.id !== item.source_id));
-    }
-    if (item.type === 'existing') {
+      setExistingImages((prev) => {
+        const filtered = prev.filter((srcOrObj) => {
+          const url = typeof srcOrObj === 'string' ? srcOrObj : (srcOrObj?.url || srcOrObj?.image || srcOrObj?.src);
+          return url !== item.src;
+        });
+        return filtered;
+      });
+      // Marcar como removido para el backend
       if (setRemovedImages && item.src) {
         setRemovedImages((prev) => (prev.includes(item.src) ? prev : [...prev, item.src]));
       }
       if (setRemovedImageIds && item.id) {
         setRemovedImageIds((prev) => (prev.includes(item.id) ? prev : [...prev, item.id]));
       }
+    } else if (item.type === 'new') {
+      setFiles((prev) => prev.filter((f) => f !== item.file));
+    } else if (item.type === 'library') {
+      setLibraryItems((prev) => prev.filter((x) => x.id !== item.source_id));
     }
-    setPrimaryIndex((pi) => {
-      if (pi === idx) return 0;
-      if (pi > idx) return pi - 1;
-      return pi;
-    });
+    // El ajuste de primaryIndex ahora se maneja con useEffect en el componente padre
   };
 
   const onDropBetween = (from, to) => {
@@ -151,14 +144,14 @@ const ImageThumbnails = ({ existingImages, files, libraryItems, primaryIndex, se
           Lib
         </button> */}
       </div>
-      {existingImages.length === 0 && files.length === 0 && (
+      {combined.length === 0 && (
         <div className="text-xs text-gray-500">Sin imágenes aún</div>
       )}
     </div>
   );
 };
 
-const ProductEditModal = ({ product, categories, onClose, onSaved, initialInfoMode = false }) => {
+const ProductEditModal = ({ product, categories, onClose, onSaved, initialInfoMode = false, onDelete }) => {
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     sku: product?.sku || '',
@@ -199,6 +192,26 @@ const ProductEditModal = ({ product, categories, onClose, onSaved, initialInfoMo
   const selectedCategory = useMemo(() => (categories || []).find((c) => String(c.id) === String(form.category)), [categories, form.category]);
   const isNew = !product || !product.id;
   const totalStock = useMemo(() => computeTotal(sizeStocks), [sizeStocks]);
+
+  // Calcular array combinado de imágenes
+  const combined = useMemo(() => {
+    return [
+      ...existingImages.map((it) => (typeof it === 'string'
+        ? { type: 'existing', id: undefined, src: it }
+        : { type: 'existing', id: it?.id, src: it?.url || it?.image || it?.src })),
+      ...files.map((f) => ({ type: 'new', file: f })),
+      ...libraryItems.map((it) => ({ type: 'library', source_id: it.id, src: it.url })),
+    ].filter((x) => (x.type === 'new' ? !!x.file : !!x.src));
+  }, [existingImages, files, libraryItems]);
+
+  // Ajustar primaryIndex cuando cambia el tamaño del array combinado
+  useEffect(() => {
+    if (combined.length === 0) {
+      setPrimaryIndex(0);
+    } else if (primaryIndex >= combined.length) {
+      setPrimaryIndex(Math.max(0, combined.length - 1));
+    }
+  }, [combined]);
 
   const deriveSizeStocks = (p) => {
     const map = {};
@@ -284,14 +297,30 @@ const ProductEditModal = ({ product, categories, onClose, onSaved, initialInfoMo
   // Manejar selección de imágenes desde GCS Gallery
   const handleGCSImageSelect = (gcsImages) => {
     // gcsImages es un array de objetos { name, url, size, content_type }
-    // Usar el endpoint del backend para descargar las imágenes (evita CORS)
     const fetchAndConvertToFile = async (gcsImg) => {
       try {
+        const filename = gcsImg.name.split('/').pop();
+        
+        // Verificar duplicados de manera más estricta
+        // 1. Verificar en files[] por nombre
+        const isDuplicateInFiles = files.some(f => f.name === filename);
+        
+        // 2. Verificar en existingImages por nombre de archivo (sin query params ni hash)
+        const isDuplicateInExisting = existingImages.some(img => {
+          const imgUrl = typeof img === 'string' ? img : (img?.url || img?.image || img?.src);
+          if (!imgUrl) return false;
+          // Extraer solo el nombre del archivo, removiendo path, query params y hash
+          const existingFilename = imgUrl.split('/').pop().split('?')[0].split('#')[0];
+          return existingFilename === filename;
+        });
+        
+        if (isDuplicateInFiles || isDuplicateInExisting) {
+          console.log(`Imagen duplicada detectada: ${filename}, omitiendo...`);
+          return null;
+        }
+        
         // Usar el proxy del backend para descargar la imagen
         const response = await inventoryService.downloadGCSImage(gcsImg.url);
-        
-        // response ya es un Blob
-        const filename = gcsImg.name.split('/').pop();
         return new File([response], filename, { type: gcsImg.content_type || 'image/jpeg' });
       } catch (error) {
         console.error('Error al cargar imagen de GCS:', error);
@@ -306,7 +335,14 @@ const ProductEditModal = ({ product, categories, onClose, onSaved, initialInfoMo
         const validFiles = newFiles.filter(f => f !== null);
         if (validFiles.length > 0) {
           setFiles(prev => [...prev, ...validFiles]);
-          toast.success(`${validFiles.length} imagen(es) agregada(s) desde GCS`);
+          const skipped = gcsImages.length - validFiles.length;
+          if (skipped > 0) {
+            toast.success(`${validFiles.length} imagen(es) agregada(s), ${skipped} duplicada(s) omitida(s)`);
+          } else {
+            toast.success(`${validFiles.length} imagen(es) agregada(s) desde GCS`);
+          }
+        } else if (gcsImages.length > 0) {
+          toast.info('Todas las imágenes seleccionadas ya estaban agregadas');
         }
         setShowGCSGallery(false);
       });
@@ -448,26 +484,21 @@ const ProductEditModal = ({ product, categories, onClose, onSaved, initialInfoMo
           <div className="py-4 grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Preview */}
             <div className="border border-gray-200">
-              {(() => {
-                // Combinar existentes + nuevas + librería para el preview principal
-                const combined = [
-                  ...existingImages.map((it) => (typeof it === 'string' ? { type: 'existing', src: it } : { type: 'existing', src: it.url || it.image || it.src })),
-                  ...files.map((f) => ({ type: 'new', file: f })),
-                  ...libraryItems.map((it) => ({ type: 'library', source_id: it.id, src: it.url })),
-                ].filter((x) => (x.type === 'new' ? !!x.file : !!x.src));
-                const idx = Math.min(primaryIndex, Math.max(0, combined.length - 1));
-                const current = combined[idx];
-                const src = current ? (current.type === 'new' ? URL.createObjectURL(current.file) : current.src) : null;
-                return (
-                  <div className="aspect-square bg-gray-50 border-b border-gray-200 flex items-center justify-center overflow-hidden">
-                    {src ? (
-                      <img src={src} alt="preview" className="w-full h-full object-cover" />
-                    ) : (
-                      <span className="text-gray-400">Sin imagen</span>
-                    )}
-                  </div>
-                );
-              })()}
+              <div className="aspect-square bg-gray-50 border-b border-gray-200 flex items-center justify-center overflow-hidden">
+                {combined.length > 0 && combined[primaryIndex] ? (
+                  <img 
+                    key={`preview-${primaryIndex}-${combined.length}`}
+                    src={combined[primaryIndex].type === 'new' 
+                      ? URL.createObjectURL(combined[primaryIndex].file) 
+                      : combined[primaryIndex].src
+                    } 
+                    alt="preview" 
+                    className="w-full h-full object-cover" 
+                  />
+                ) : (
+                  <span className="text-gray-400">Sin imagen</span>
+                )}
+              </div>
               <div className="p-3">
                 <div className="text-sm text-gray-500">SKU: {form.sku || '—'}</div>
                 <div className="text-base font-medium">{form.name || 'Nombre del producto'}</div>
@@ -532,9 +563,7 @@ const ProductEditModal = ({ product, categories, onClose, onSaved, initialInfoMo
                 <>
                   {/* Thumbnails existentes + nuevas, con reordenamiento y principal */}
                   <ImageThumbnails
-                    existingImages={existingImages}
-                    files={files}
-                    libraryItems={libraryItems}
+                    combined={combined}
                     primaryIndex={primaryIndex}
                     setPrimaryIndex={setPrimaryIndex}
                     setExistingImages={setExistingImages}
@@ -743,9 +772,25 @@ const ProductEditModal = ({ product, categories, onClose, onSaved, initialInfoMo
                 )}
               </div>
 
-                    <div className="col-span-2 flex items-center gap-3 mt-2">
-                      <input id="visible" type="checkbox" checked={form.is_active} onChange={(e)=> setForm({...form, is_active: e.target.checked})} />
-                      <label htmlFor="visible" className="text-sm text-gray-700">Visible</label>
+                    <div className="col-span-2 flex items-center justify-between gap-3 mt-2">
+                      <div className="flex items-center gap-3">
+                        <input id="visible" type="checkbox" checked={form.is_active} onChange={(e)=> setForm({...form, is_active: e.target.checked})} />
+                        <label htmlFor="visible" className="text-sm text-gray-700">Visible</label>
+                      </div>
+                      {!isNew && onDelete && (
+                        <button 
+                          type="button" 
+                          className="btn-outline-slim text-red-600 border-red-600 hover:bg-red-50" 
+                          onClick={() => {
+                            if (window.confirm('¿Eliminar este producto permanentemente? Esta acción no se puede deshacer. Las ventas asociadas se mantendrán con los datos cacheados.')) {
+                              onDelete(product.id);
+                            }
+                          }}
+                          disabled={saving}
+                        >
+                          Eliminar producto
+                        </button>
+                      )}
                     </div>
                   </div>
                 </>

@@ -103,7 +103,6 @@ const Products = () => {
   };
 
   const onDelete = async (id) => {
-    if (!window.confirm('¿Eliminar producto? Esta acción no se puede deshacer.')) return;
     try {
       await inventoryService.deleteProduct(id);
       toast.success(t => (
@@ -112,6 +111,8 @@ const Products = () => {
           <button onClick={() => toast.dismiss(t.id)} className="btn-outline-slim">Cerrar</button>
         </div>
       ));
+      setModalProduct(null); // Cerrar modal si está abierto
+      setModalInitialInfo(false);
       await load();
     } catch (err) {
       const msg = err?.detail || 'No se pudo eliminar';
@@ -372,7 +373,6 @@ const Products = () => {
                       <div className="flex items-center gap-2">
                         <button className="btn-outline-slim" onClick={() => onEdit(p)}>Editar</button>
                         <button className="btn-outline-slim" onClick={() => onInfo(p)}>Info</button>
-                        <button className="btn-outline-slim" onClick={() => onDelete(p.id)}>Eliminar</button>
                       </div>
                     </td>
                   </tr>
@@ -395,6 +395,7 @@ const Products = () => {
         initialInfoMode={modalInitialInfo}
         onClose={() => { setModalProduct(null); setModalInitialInfo(false); }}
         onSaved={async () => { await load(); setModalProduct(null); setModalInitialInfo(false);} }
+        onDelete={onDelete}
       />
     )}
     </>

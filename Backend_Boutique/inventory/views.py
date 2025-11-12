@@ -261,16 +261,19 @@ class ProductViewSet(viewsets.ModelViewSet):
             product.sizes = sorted(list(keep_sizes))
             product.save(update_fields=['stock', 'sizes'])
 
-        # 1) Handle removed images (by ids or urls)
-        removed_ids = request.data.get('removed_image_ids')
-        removed_urls = request.data.get('removed_images')
-        # Optional: force permanent deletion of underlying file from library context
-        # Accept a list 'force_delete_image_ids' -> will remove ALL ProductImage rows referencing the same file path
-        force_delete_ids_raw = request.data.get('force_delete_image_ids')
+        # ============================================================
+        # MANEJO DE IMÁGENES - SISTEMA SIMPLIFICADO Y CORRECTO
+        # ============================================================
+        
         import json
+        from os.path import basename
+        
+        # PASO 1: Eliminar imágenes marcadas para eliminación
+        removed_ids = request.data.get('removed_image_ids')
+        force_delete_ids = request.data.get('force_delete_image_ids')
+        
+        # Convertir a lista si es necesario
         to_remove_ids = []
-        to_remove_paths = []
-        force_delete_ids = []
         if removed_ids:
             try:
                 parsed = removed_ids if isinstance(removed_ids, list) else json.loads(str(removed_ids))
@@ -278,269 +281,201 @@ class ProductViewSet(viewsets.ModelViewSet):
                     to_remove_ids = [int(x) for x in parsed if str(x).isdigit()]
             except Exception:
                 pass
-        if removed_urls:
+        
+        # Eliminar las imágenes marcadas (solo desvincular, no borrar archivo físico)
+        if to_remove_ids:
+            product.images.filter(id__in=to_remove_ids).delete()
+        
+        # Eliminación forzada (borra archivo físico si no está usado por otros productos)
+        if force_delete_ids:
             try:
-                parsed = removed_urls if isinstance(removed_urls, list) else json.loads(str(removed_urls))
+                parsed = force_delete_ids if isinstance(force_delete_ids, list) else json.loads(str(force_delete_ids))
                 if isinstance(parsed, list):
-                    for u in parsed:
-                        rel = self._url_to_rel_media(u)
-                        if rel:
-                            to_remove_paths.append(rel)
-            except Exception:
-                # accept comma separated string
-                try:
-                    for u in str(removed_urls).split(','):
-                        rel = self._url_to_rel_media(u.strip())
-                        if rel:
-                            to_remove_paths.append(rel)
-                except Exception:
-                    pass
-        if force_delete_ids_raw:
-            try:
-                parsed = force_delete_ids_raw if isinstance(force_delete_ids_raw, list) else json.loads(str(force_delete_ids_raw))
-                if isinstance(parsed, list):
-                    force_delete_ids = [int(x) for x in parsed if str(x).isdigit()]
+                    force_ids = [int(x) for x in parsed if str(x).isdigit()]
+                    for img_id in force_ids:
+                        try:
+                            img = ProductImage.objects.filter(id=img_id).first()
+                            if img:
+                                path = str(img.image.name)
+                                # Borrar todas las referencias a este archivo
+                                ProductImage.objects.filter(image=path).delete()
+                                # Borrar archivo físico
+                                if default_storage.exists(path):
+                                    default_storage.delete(path)
+                        except Exception:
+                            pass
             except Exception:
                 pass
 
-        if to_remove_ids:
-            # Detach only: delete ProductImage rows for this product (do not delete physical file)
-            for img in list(product.images.filter(id__in=to_remove_ids)):
-                try:
-                    img.delete()
-                except Exception:
-                    pass
-        if to_remove_paths:
-            # Detach only by path/url for this product (do not delete physical file)
-            from os.path import basename
-            qs = product.images.all()
-            for img in list(qs):
-                try:
-                    name = str(img.image.name)
-                    if name in to_remove_paths or basename(name) in [basename(p) for p in to_remove_paths]:
-                        try:
-                            img.delete()
-                        except Exception:
-                            pass
-                except Exception:
-                    continue
-        # Force-delete logic: remove all ProductImage rows referencing same underlying file for provided ids
-        # This bypasses reuse protection; underlying file will be deleted even if other products referenced it.
-        if force_delete_ids:
-            from os.path import basename
-            for img in list(ProductImage.objects.filter(id__in=force_delete_ids)):
-                try:
-                    path = str(img.image.name)
-                except Exception:
-                    path = None
-                # Delete every ProductImage referencing this path first
-                if path:
-                    related_qs = ProductImage.objects.filter(image=path)
-                    for rel_img in list(related_qs):
-                        try:
-                            rel_img.delete()
-                        except Exception:
-                            pass
-                    # Finally delete underlying file if present
-                    try:
-                        if default_storage.exists(path):
-                            default_storage.delete(path)
-                    except Exception:
-                        pass
-
-        # 2) Ordering and new images via images_order payload
+        # PASO 2: Procesar orden de imágenes (images_order)
         images_order = request.data.get('images_order')
         primary_image_url = request.data.get('primary_image_url')
-        primary_image_id = request.data.get('primary_image_id')
-        primary_library_source_id = request.data.get('primary_library_source_id')
         primary_target = None
 
-        files_list = []
-        try:
-            files_list = list(request.FILES.getlist('images') or [])
-        except Exception:
-            files_list = []
-        # include single 'image' in files map for potential matching
-        single_image_file = request.FILES.get('image') if hasattr(request, 'FILES') else None
+        # Obtener archivos subidos
+        files_list = list(request.FILES.getlist('images') or [])
         files_by_name = {}
-        try:
-            from os.path import basename
-            for f in files_list:
-                try:
-                    n = getattr(f, 'name', None)
-                    if n:
-                        files_by_name[basename(n)] = f
-                except Exception:
-                    continue
-            if single_image_file is not None:
-                n = getattr(single_image_file, 'name', '')
-                if n:
-                    files_by_name[basename(n)] = single_image_file
-        except Exception:
-            pass
-
-        # Build mapping of existing by rel path and by id
-        existing = list(product.images.all())
-        existing_by_id = {img.id: img for img in existing}
-        existing_by_rel = {}
-        from os.path import basename
-        for img in existing:
+        for f in files_list:
             try:
-                rel = str(img.image.name)
-                existing_by_rel[rel] = img
-                existing_by_rel[basename(rel)] = img
+                name = basename(getattr(f, 'name', ''))
+                if name:
+                    files_by_name[name] = f
             except Exception:
                 continue
 
-        library_source_ids_created = {}
+        # Si hay images_order, usarlo como fuente de verdad
         if images_order:
             try:
                 ordered = images_order if isinstance(images_order, list) else json.loads(str(images_order))
             except Exception:
-                ordered = None
-            if isinstance(ordered, list):
+                ordered = []
+            
+            if isinstance(ordered, list) and len(ordered) > 0:
+                # Obtener todas las imágenes existentes actuales
+                existing_images = {img.id: img for img in product.images.all()}
+                existing_by_filename = {}
+                for img in existing_images.values():
+                    try:
+                        fname = basename(str(img.image.name))
+                        existing_by_filename[fname] = img
+                    except Exception:
+                        continue
+                
+                # Procesar cada imagen en el orden especificado
                 next_order = 1
-                used_existing_ids = set()
-                used_file_names = set()
-
-                # Helper to resolve existing by url
-                def find_existing_by_url(u):
-                    rel = self._url_to_rel_media(u)
-                    if not rel:
-                        return None
-                    return existing_by_rel.get(rel) or existing_by_rel.get(basename(rel))
-
-                # Apply order based on the provided combined list
+                processed_existing_ids = set()
+                processed_filenames = set()
+                
                 for entry in ordered:
                     etype = entry.get('type') if isinstance(entry, dict) else None
+                    
                     if etype == 'existing':
-                        img = None
-                        try:
-                            iid = entry.get('id')
-                            if iid is not None:
-                                img = existing_by_id.get(int(iid))
-                        except Exception:
-                            img = None
-                        url = entry.get('url')
-                        if img is None and url:
-                            img = find_existing_by_url(url)
-                        if img and img.id not in used_existing_ids:
-                            img.sort_order = next_order
-                            img.save(update_fields=['sort_order'])
-                            used_existing_ids.add(img.id)
-                            # set primary target if matches primary_image_url
-                            if primary_image_url and url and str(url) == str(primary_image_url):
-                                primary_target = img
-                            next_order += 1
+                        # Imagen que ya existe en el producto
+                        img_id = entry.get('id')
+                        if img_id and int(img_id) in existing_images:
+                            img = existing_images[int(img_id)]
+                            if img.id not in processed_existing_ids:
+                                img.sort_order = next_order
+                                img.save(update_fields=['sort_order'])
+                                processed_existing_ids.add(img.id)
+                                
+                                # Marcar como primary si corresponde
+                                url = entry.get('url', '')
+                                if primary_image_url and url and str(url) == str(primary_image_url):
+                                    primary_target = img
+                                
+                                next_order += 1
+                    
                     elif etype == 'new':
-                        name = entry.get('name')
-                        f = files_by_name.get(name)
-                        if f and name not in used_file_names:
-                            new_img = ProductImage.objects.create(product=product, image=f, sort_order=next_order)
-                            used_file_names.add(name)
-                            # If 'image' refers to this filename and primary not set by id/url, mark later
-                            if single_image_file is not None and getattr(single_image_file, 'name', '') == name and primary_target is None and not primary_image_id and not primary_image_url:
-                                primary_target = new_img
-                            next_order += 1
+                        # Archivo nuevo subido
+                        filename = entry.get('name', '')
+                        if filename and filename in files_by_name and filename not in processed_filenames:
+                            # Verificar si ya existe una imagen con este nombre de archivo
+                            if filename in existing_by_filename:
+                                # Reutilizar la existente
+                                img = existing_by_filename[filename]
+                                if img.id not in processed_existing_ids:
+                                    img.sort_order = next_order
+                                    img.save(update_fields=['sort_order'])
+                                    processed_existing_ids.add(img.id)
+                                    processed_filenames.add(filename)
+                                    next_order += 1
+                            else:
+                                # Crear nueva
+                                file_obj = files_by_name[filename]
+                                new_img = ProductImage.objects.create(
+                                    product=product,
+                                    image=file_obj,
+                                    sort_order=next_order
+                                )
+                                processed_filenames.add(filename)
+                                processed_existing_ids.add(new_img.id)
+                                
+                                if primary_target is None:
+                                    primary_target = new_img
+                                
+                                next_order += 1
+                    
                     elif etype == 'library':
+                        # Imagen desde librería (mover de otro producto)
                         source_id = entry.get('source_id')
-                        try:
-                            sid = int(source_id)
-                        except Exception:
-                            sid = None
-                        if sid:
-                            src_img = ProductImage.objects.filter(id=sid).first()
-                            if src_img:
-                                # Move/reassign the existing ProductImage to this product instead of duplicating
-                                try:
+                        if source_id:
+                            try:
+                                src_img = ProductImage.objects.filter(id=int(source_id)).first()
+                                if src_img and src_img.id not in processed_existing_ids:
                                     src_img.product = product
                                     src_img.sort_order = next_order
                                     src_img.is_primary = False
                                     src_img.save(update_fields=['product', 'sort_order', 'is_primary'])
-                                except Exception:
-                                    pass
-                                library_source_ids_created[sid] = src_img
-                                # Mark as used to avoid appending duplicate later
-                                used_existing_ids.add(src_img.id)
-                                if primary_library_source_id and str(primary_library_source_id) == str(sid) and primary_target is None:
-                                    primary_target = src_img
-                                next_order += 1
-
-                # Append remaining existing not referenced
-                for img in product.images.exclude(id__in=used_existing_ids).order_by('sort_order', '-created_at'):
-                    img.sort_order = next_order
-                    img.save(update_fields=['sort_order'])
-                    next_order += 1
-
-                # Append remaining new files not referenced
-                for name, f in files_by_name.items():
-                    if name not in used_file_names:
-                        ProductImage.objects.create(product=product, image=f, sort_order=next_order)
-                        next_order += 1
+                                    processed_existing_ids.add(src_img.id)
+                                    next_order += 1
+                            except Exception:
+                                pass
+                
+                # IMPORTANTE: Eliminar imágenes existentes que NO están en images_order
+                # Esto significa que fueron eliminadas intencionalmente
+                images_to_delete = product.images.exclude(id__in=processed_existing_ids)
+                images_to_delete.delete()
+            
             else:
-                images_order = None  # fallback to default path below
-
-        if not images_order:
-            # Fallback: append all new images at the end in received order
-            images = request.FILES.getlist('images')
-            if images:
+                # images_order está vacío = eliminar todas las imágenes
+                product.images.all().delete()
+        
+        else:
+            # No hay images_order (modo legacy): solo agregar nuevas imágenes al final
+            if files_list:
                 current_max = product.images.aggregate(models.Max('sort_order')).get('sort_order__max') or 0
                 order = current_max + 1
-                for f in images:
+                for f in files_list:
                     ProductImage.objects.create(product=product, image=f, sort_order=order)
                     order += 1
 
-        # 3) Primary image selection
-        # Priority: primary_image_id -> primary_image_url -> single 'image' file (if created above) -> lowest sort_order
-        if primary_target is None and primary_library_source_id:
+        # PASO 3: Establecer imagen principal
+        # Si ya se marcó primary_target durante el procesamiento, usarlo
+        # Si no, buscar por URL o tomar la primera imagen
+        if primary_target is None and primary_image_url:
+            # Buscar por URL proporcionada
             try:
-                sid = int(primary_library_source_id)
-                created = library_source_ids_created.get(sid)
-                if created:
-                    primary_target = created
+                rel_path = self._url_to_rel_media(primary_image_url)
+                if rel_path:
+                    # Buscar en las imágenes actuales del producto
+                    for img in product.images.all():
+                        try:
+                            img_path = str(img.image.name)
+                            if img_path == rel_path or basename(img_path) == basename(rel_path):
+                                primary_target = img
+                                break
+                        except Exception:
+                            continue
             except Exception:
                 pass
-        if primary_image_id:
-            try:
-                img = product.images.get(id=int(primary_image_id))
-                primary_target = img
-            except Exception:
-                pass
-        elif primary_image_url and not primary_target:
-            try:
-                rel = self._url_to_rel_media(primary_image_url)
-                if rel:
-                    img = existing_by_rel.get(rel) or existing_by_rel.get(basename(rel))
-                    if img:
-                        primary_target = img
-            except Exception:
-                pass
-
-        # If we received a single primary file under 'image' but haven't created a ProductImage for it
-        if 'image' in request.FILES and primary_target is None:
-            # Create a ProductImage for the primary file at the front
-            current_min = product.images.aggregate(models.Min('sort_order')).get('sort_order__min') or 1
-            new_order = max(1, current_min - 1)
-            img = ProductImage.objects.create(product=product, image=request.FILES['image'], sort_order=new_order)
-            primary_target = img
-
-        # Apply primary flags and sync legacy product.image
+        
+        # Si aún no hay primary_target, tomar la primera imagen (sort_order más bajo)
         if primary_target is None:
-            # Fallback: choose the image with the lowest sort_order as primary
             try:
-                first = product.images.order_by('sort_order', '-created_at').first()
+                first = product.images.order_by('sort_order').first()
                 if first:
                     primary_target = first
             except Exception:
                 pass
-
+        
+        # Aplicar la marca de primary y sincronizar con el campo legacy product.image
         if primary_target is not None:
+            # Desmarcar todas las demás como no primary
             product.images.exclude(id=primary_target.id).update(is_primary=False)
+            # Marcar esta como primary
             primary_target.is_primary = True
             primary_target.save(update_fields=['is_primary'])
-            # sync legacy primary field
+            # Sincronizar campo legacy
             try:
                 product.image = primary_target.image
+                product.save(update_fields=['image'])
+            except Exception:
+                pass
+        else:
+            # No hay imágenes, limpiar el campo legacy
+            try:
+                product.image = None
                 product.save(update_fields=['image'])
             except Exception:
                 pass

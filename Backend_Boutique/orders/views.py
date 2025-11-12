@@ -91,12 +91,14 @@ class OrderViewSet(viewsets.ModelViewSet):
                 unit_price = product.price
                 line_subtotal = unit_price * quantity
                 sku_cache = variant.sku if variant and variant.sku else (f"{product.sku}-{variant.size}" if variant else product.sku)
+                size_cache = variant.size if variant else (size_label if size_label else None)
                 OrderItem.objects.create(
                     order=order,
                     product=product,
                     variant=variant,
                     product_name_cache=product.name,
                     sku_cache=sku_cache,
+                    size_cache=size_cache,
                     unit_price=unit_price,
                     quantity=quantity,
                     line_subtotal=line_subtotal,

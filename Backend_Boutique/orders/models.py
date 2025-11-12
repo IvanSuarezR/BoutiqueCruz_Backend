@@ -127,16 +127,18 @@ class Order(models.Model):
 
 class OrderItem(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='items')
-    product = models.ForeignKey(Product, on_delete=models.PROTECT)
-    variant = models.ForeignKey(ProductVariant, on_delete=models.PROTECT, blank=True, null=True)
+    product = models.ForeignKey(Product, on_delete=models.SET_NULL, null=True, blank=True)
+    variant = models.ForeignKey(ProductVariant, on_delete=models.SET_NULL, null=True, blank=True)
     product_name_cache = models.CharField(max_length=200)
     sku_cache = models.CharField(max_length=80)
+    size_cache = models.CharField(max_length=20, blank=True, null=True)  # Preservar talla aunque se elimine el producto/variante
     unit_price = models.DecimalField(max_digits=12, decimal_places=2)
     quantity = models.IntegerField(default=1)
     line_subtotal = models.DecimalField(max_digits=12, decimal_places=2)
 
     def __str__(self):
-        return f"{self.sku_cache} x{self.quantity}"
+        size_info = f" ({self.size_cache})" if self.size_cache else ""
+        return f"{self.sku_cache}{size_info} x{self.quantity}"
 
 
 class OrderStatusHistory(models.Model):
