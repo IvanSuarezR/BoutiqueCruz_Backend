@@ -33,7 +33,7 @@ SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-8b+tbft_ui959m618*08p7ub-0
 DEBUG = os.getenv('DEBUG', 'True') == 'True'
 
 # Allowed hosts - para Cloud Run
-ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1, https://boutique-frontend-238562702765.us-central1.run.app').split(',')
 # Agregar dominio de Cloud Run automáticamente
 if os.getenv('K_SERVICE'):  # Variable presente en Cloud Run
     ALLOWED_HOSTS.append('*')  # O puedes especificar el dominio exacto
