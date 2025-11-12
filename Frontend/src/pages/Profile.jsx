@@ -194,14 +194,14 @@ const Profile = () => {
                 <option value="O">Otro</option>
               </select>
             </div>
-            <div className="md:col-span-2">
+            {/* <div className="md:col-span-2">
               <label className="block text-sm mb-1">Dirección</label>
               <textarea
                 rows="3"
                 {...register('address')}
                 className="block w-full px-3 py-2 border rounded-none border-gray-300"
               />
-            </div>
+            </div> */}
             <div className="md:col-span-2 flex items-center justify-end gap-3 mt-2">
               <button type="button" onClick={() => navigate(-1)} className="btn-outline-slim">Cancelar</button>
               <button type="submit" disabled={isSubmitting} className="btn-outline-slim">

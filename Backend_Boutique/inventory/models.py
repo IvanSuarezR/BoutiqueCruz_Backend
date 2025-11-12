@@ -115,6 +115,3 @@ class StockMovement(models.Model):
 
     def __str__(self) -> str:
         return f"{self.get_movement_type_display()} {self.quantity} {self.product}"
-from django.db import models
-
-# Create your models here.

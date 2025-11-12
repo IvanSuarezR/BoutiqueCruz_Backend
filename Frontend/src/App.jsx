@@ -5,6 +5,7 @@ import { CartProvider } from './context/CartContext.jsx';
 import PrivateRoute from './components/common/PrivateRoute.jsx';
 import Home from './pages/Home.jsx';
 import Browse from './pages/Browse.jsx';
+import SearchPage from './pages/SearchPage.jsx';
 import Login from './pages/Login.jsx';
 import Register from './pages/Register.jsx';
 import Dashboard from './pages/Dashboard.jsx';
@@ -43,6 +44,7 @@ function App() {
           {/* Rutas públicas */}
           <Route path="/" element={<Home />} />
           <Route path="/home" element={<Navigate to="/" />} />
+          <Route path="/search" element={<SearchPage />} />
           {/* Género/categoría navegable */}
           <Route path="/hombre" element={<Browse />} />
           <Route path="/hombre/:cat" element={<Browse />} />

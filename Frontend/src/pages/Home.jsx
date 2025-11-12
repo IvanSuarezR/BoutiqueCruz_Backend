@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams, useLocation } from 'react-router-do
 import inventoryService from '../services/inventoryService.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import Header from '../components/common/Header.jsx';
+import BannerManager from '../components/common/BannerManager.jsx';
 
 const Home = () => {
   const navigate = useNavigate();
@@ -11,6 +12,22 @@ const Home = () => {
   const location = useLocation();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [bannerUrl, setBannerUrl] = useState(import.meta.env.VITE_BANNER_IMAGE_URL || '');
+
+  // Cargar banner desde el backend
+  useEffect(() => {
+    const loadBanner = async () => {
+      try {
+        const data = await inventoryService.getBanner();
+        if (data.banner_url) {
+          setBannerUrl(data.banner_url);
+        }
+      } catch (error) {
+        console.log('Usando banner por defecto del .env');
+      }
+    };
+    loadBanner();
+  }, []);
 
   useEffect(() => {
     const load = async () => {
@@ -54,9 +71,21 @@ const Home = () => {
               <a href="#catalogo" className="border border-gray-900 px-4 py-2 text-sm">Ver catálogo</a>
             </div>
           </div>
-          <div className="aspect-[4/3] bg-gray-100 border border-gray-200 flex items-center justify-center text-gray-400">
-            {/* Placeholder hero image o banner */}
-            Banner
+          <div className="aspect-[4/3] bg-gray-100 border border-gray-200 flex items-center justify-center text-gray-400 overflow-hidden relative">
+            {bannerUrl ? (
+              <img
+                src={bannerUrl}
+                alt="Banner Boutique"
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <span>Banner</span>
+            )}
+            {/* Botón de editar banner (solo para admins) */}
+            <BannerManager 
+              currentBannerUrl={bannerUrl} 
+              onBannerUpdate={(newUrl) => setBannerUrl(newUrl)}
+            />
           </div>
         </div>
       </section>
@@ -104,7 +133,7 @@ const Home = () => {
       {/* Footer minimal */}
       <footer id="contacto" className="border-t border-gray-200">
         <div className="max-w-7xl mx-auto px-4 py-8 text-sm text-gray-500">
-          © {new Date().getFullYear()} Boutique Fashion — Todos los derechos reservados
+          © {new Date().getFullYear()} BoutiqueCruz — Todos los derechos reservados
         </div>
       </footer>
     </div>

@@ -380,9 +380,29 @@ class OrderViewSet(viewsets.ModelViewSet):
         order = self.get_object()
         if order.status in ('CANCELED','DELIVERED','REFUNDED'):
             return Response({'detail':'No se puede cancelar este estado'}, status=400)
+        
+        # Restaurar inventario si ya se había descontado
+        if order.inventory_deducted and not order.inventory_restored:
+            for it in order.items.select_related('variant','product').all():
+                if it.variant:
+                    it.variant.stock += it.quantity
+                    it.variant.save(update_fields=['stock'])
+            # Recalcular stock del producto
+            for prod in Product.objects.filter(id__in=order.items.values_list('product_id', flat=True)).distinct():
+                variants = list(prod.variants.all())
+                if variants:
+                    prod.stock = sum([v.stock for v in variants])
+                else:
+                    # Si no tiene variantes, restaurar directamente
+                    used_qty = sum([it.quantity for it in order.items.filter(product=prod)])
+                    prod.stock += used_qty
+                prod.save(update_fields=['stock'])
+            order.inventory_restored = True
+        
+        order.status = 'CANCELED'
         order.canceled_at = timezone.now()
         self._add_status_history(order, 'CANCELED')
-        order.save(update_fields=['canceled_at'])
+        order.save(update_fields=['status', 'canceled_at', 'inventory_restored'])
         return Response(OrderSerializer(order, context={'request':request}).data)
 
     @action(detail=True, methods=['patch'], url_path='set_customer')

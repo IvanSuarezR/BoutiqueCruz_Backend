@@ -1,21 +1,3 @@
-# 🛍️ Boutique Cruz - Sistema de Gestión E-Commerce
-
-Sistema completo de gestión para boutique con **backend Django REST Framework** y **frontend React** que incluye inventario, ventas, predicciones ML, reportes con IA y chatbot asistente.
-
-## 📋 Tabla de Contenidos
-
-- [Características](#características)
-- [Tecnologías](#tecnologías)
-- [Requisitos Previos](#requisitos-previos)
-- [Instalación](#instalación)
-- [Configuración](#configuración)
-- [Carga de Datos](#carga-de-datos)
-- [Ejecución](#ejecución)
-- [Estructura del Proyecto](#estructura-del-proyecto)
-- [API Endpoints](#api-endpoints)
-- [Permisos y Roles](#permisos-y-roles)
-
----
 
 ## ✨ Características
 

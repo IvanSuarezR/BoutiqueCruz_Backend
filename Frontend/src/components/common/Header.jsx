@@ -166,8 +166,20 @@ const Header = () => {
           </div>
         </nav>
 
-        {/* Right: carrito (bolsa) y perfil */}
+        {/* Right: búsqueda, carrito (bolsa) y perfil */}
         <div className="flex items-center gap-3">
+          {/* Botón de Búsqueda */}
+          <button
+            onClick={() => navigate('/search')}
+            className="btn-outline-slim border-white text-white"
+            title="Buscar"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+              <circle cx="11" cy="11" r="8" />
+              <path d="m21 21-4.35-4.35" />
+            </svg>
+          </button>
+          
           {/* Botón Carrito / Bolsa */}
           <button
             onClick={() => navigate('/cart')}
@@ -298,6 +310,12 @@ const Header = () => {
             </nav>
 
             <div className="flex items-center gap-3">
+              <button onClick={() => navigate('/search')} className="btn-outline-slim" title="Buscar">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+                  <circle cx="11" cy="11" r="8" />
+                  <path d="m21 21-4.35-4.35" />
+                </svg>
+              </button>
               <button onClick={() => navigate('/cart')} className="btn-outline-slim" title="Carrito">
                 <div className="relative">
                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5"><path d="M7 7V6a5 5 0 0110 0v1h1.25a.75.75 0 01.744.648l1.5 12A.75.75 0 0119.75 21H4.25a.75.75 0 01-.744-.852l1.5-12A.75.75 0 015.75 7H7zm1.5 0h7V6a3.5 3.5 0 10-7 0v1z" /></svg>

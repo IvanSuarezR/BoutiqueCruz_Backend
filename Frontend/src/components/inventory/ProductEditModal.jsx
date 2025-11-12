@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import inventoryService from '../../services/inventoryService.js';
 import toast from 'react-hot-toast';
+import GCSGalleryModal from './GCSGalleryModal.jsx';
 
 const computeTotal = (map) => Object.values(map || {}).reduce((a, b) => a + (Number(b || 0) || 0), 0);
 
 // Mini componente para las miniaturas con reordenamiento/ eliminación / principal
-const ImageThumbnails = ({ existingImages, files, libraryItems, primaryIndex, setPrimaryIndex, setExistingImages, setFiles, setLibraryItems, setRemovedImages, setRemovedImageIds, addLibraryItemToOrder, fileInputRef, openLibrary }) => {
+const ImageThumbnails = ({ existingImages, files, libraryItems, primaryIndex, setPrimaryIndex, setExistingImages, setFiles, setLibraryItems, setRemovedImages, setRemovedImageIds, addLibraryItemToOrder, fileInputRef, openLibrary, openGCSGallery }) => {
   // dragIndex manejado dentro de ImageThumbnails
   const [dragIndex, setDragIndex] = useState(null);
   const combined = [
@@ -70,24 +71,56 @@ const ImageThumbnails = ({ existingImages, files, libraryItems, primaryIndex, se
           <div
             key={`thumb-${idx}`}
             draggable
-            onDragStart={() => setDragIndex(idx)}
-            onDragOver={(e) => e.preventDefault()}
+            onDragStart={(e) => {
+              setDragIndex(idx);
+              e.dataTransfer.effectAllowed = 'move';
+            }}
+            onDragOver={(e) => {
+              e.preventDefault();
+              e.dataTransfer.dropEffect = 'move';
+            }}
+            onDragEnter={(e) => {
+              e.preventDefault();
+            }}
             onDrop={(e) => {
               e.preventDefault();
-              if (dragIndex === null || dragIndex === idx) return;
+              e.stopPropagation();
+              if (dragIndex === null || dragIndex === idx) {
+                setDragIndex(null);
+                return;
+              }
               onDropBetween(dragIndex, idx);
-              if (primaryIndex === dragIndex) setPrimaryIndex(idx);
+              if (primaryIndex === dragIndex) {
+                setPrimaryIndex(idx);
+              } else if (primaryIndex === idx && dragIndex < idx) {
+                setPrimaryIndex(primaryIndex - 1);
+              } else if (primaryIndex > dragIndex && primaryIndex <= idx) {
+                setPrimaryIndex(primaryIndex - 1);
+              } else if (primaryIndex < dragIndex && primaryIndex >= idx) {
+                setPrimaryIndex(primaryIndex + 1);
+              }
               setDragIndex(null);
             }}
-            className={`relative border ${isPrimary ? 'border-gray-900' : 'border-gray-200'} w-16 h-16 overflow-hidden cursor-move`}
+            onDragEnd={() => setDragIndex(null)}
+            className={`relative border ${isPrimary ? 'border-blue-500 border-2' : 'border-gray-300'} ${dragIndex === idx ? 'opacity-50' : ''} w-16 h-16 overflow-hidden cursor-move transition-opacity`}
             title="Arrastra para reordenar. Click en P para principal"
           >
-            <button type="button" className="absolute top-1 left-1 bg-white/80 text-[10px] px-1 rounded border" onClick={() => setPrimaryIndex(idx)}>P</button>
+            <button 
+              type="button" 
+              className={`absolute top-1 left-1 ${isPrimary ? 'bg-blue-500 text-white' : 'bg-white/90'} text-[10px] px-1.5 rounded shadow-sm border ${isPrimary ? 'border-blue-600' : 'border-gray-300'}`} 
+              onClick={() => setPrimaryIndex(idx)}
+              title="Marcar como principal"
+            >
+              P
+            </button>
             <button
               type="button"
-              className="absolute top-1 right-1 bg-white/80 text-[10px] px-1 rounded border"
+              className="absolute top-1 right-1 bg-red-500 text-white text-[10px] px-1.5 rounded shadow-sm hover:bg-red-600"
               onClick={() => onRemove(idx)}
-            >×</button>
+              title="Eliminar"
+            >
+              ×
+            </button>
             <img src={src} alt={`thumb-${idx}`} className="w-full h-full object-cover pointer-events-none" />
           </div>
         );
@@ -96,19 +129,27 @@ const ImageThumbnails = ({ existingImages, files, libraryItems, primaryIndex, se
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          className="border-2 border-dashed border-gray-300 w-16 h-16 flex items-center justify-center text-gray-400 hover:text-gray-600 hover:border-gray-400"
+          className="border-2 border-dashed border-gray-300 w-16 h-16 flex items-center justify-center text-gray-400 hover:text-gray-600 hover:border-gray-400 transition-colors"
           title="Subir nuevas imágenes"
         >
           +
         </button>
         <button
           type="button"
+          onClick={openGCSGallery}
+          className="border border-gray-300 w-16 h-16 flex items-center justify-center text-xs text-gray-600 hover:bg-gray-50 transition-colors"
+          title="Gestor de galería GCS"
+        >
+          Seleccionar
+        </button>
+        {/* <button
+          type="button"
           onClick={openLibrary}
           className="border border-gray-300 w-16 h-16 flex items-center justify-center text-[10px] text-gray-600 hover:bg-gray-50"
-          title="Seleccionar de librería"
+          title="Librería de productos"
         >
           Lib
-        </button>
+        </button> */}
       </div>
       {existingImages.length === 0 && files.length === 0 && (
         <div className="text-xs text-gray-500">Sin imágenes aún</div>
@@ -144,6 +185,7 @@ const ProductEditModal = ({ product, categories, onClose, onSaved, initialInfoMo
   const [files, setFiles] = useState([]); // nuevas imágenes
   const [libraryItems, setLibraryItems] = useState([]); // imágenes seleccionadas desde la librería (reutilizadas)
   const [showLibrary, setShowLibrary] = useState(false);
+  const [showGCSGallery, setShowGCSGallery] = useState(false); // Gestor de galería GCS
   const [libraryLoading, setLibraryLoading] = useState(false);
   const [libraryData, setLibraryData] = useState([]);
   const [primaryIndex, setPrimaryIndex] = useState(0); // índice dentro de la lista combinada visible
@@ -152,6 +194,7 @@ const ProductEditModal = ({ product, categories, onClose, onSaved, initialInfoMo
   const detailLoadedRef = useRef(false);
   const fileInputRef = useRef(null);
   const [forceDeleteRemoved, setForceDeleteRemoved] = useState(false); // Si al quitar existentes también se borra el archivo
+  const [salesBySize, setSalesBySize] = useState({}); // Ventas por talla
 
   const selectedCategory = useMemo(() => (categories || []).find((c) => String(c.id) === String(form.category)), [categories, form.category]);
   const isNew = !product || !product.id;
@@ -188,6 +231,20 @@ const ProductEditModal = ({ product, categories, onClose, onSaved, initialInfoMo
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [product]);
 
+  // Cargar ventas por talla cuando está en modo info y el producto existe
+  useEffect(() => {
+    if (infoMode && product && product.id) {
+      inventoryService.getSalesBySize(product.id)
+        .then(data => {
+          setSalesBySize(data.sales_by_size || {});
+        })
+        .catch(err => {
+          console.error('Error cargando ventas:', err);
+          setSalesBySize({});
+        });
+    }
+  }, [infoMode, product]);
+
   // Bloques JSX huérfanos eliminados (eran la causa del error de compilación)
   const addSize = (sz) => {
     const v = String(sz || '').trim();
@@ -222,6 +279,37 @@ const ProductEditModal = ({ product, categories, onClose, onSaved, initialInfoMo
     // evitar duplicados (no agregar dos veces la misma source_id)
     if (libraryItems.find((x) => x.id === item.id)) return;
     setLibraryItems((prev) => [...prev, item]);
+  };
+
+  // Manejar selección de imágenes desde GCS Gallery
+  const handleGCSImageSelect = (gcsImages) => {
+    // gcsImages es un array de objetos { name, url, size, content_type }
+    // Usar el endpoint del backend para descargar las imágenes (evita CORS)
+    const fetchAndConvertToFile = async (gcsImg) => {
+      try {
+        // Usar el proxy del backend para descargar la imagen
+        const response = await inventoryService.downloadGCSImage(gcsImg.url);
+        
+        // response ya es un Blob
+        const filename = gcsImg.name.split('/').pop();
+        return new File([response], filename, { type: gcsImg.content_type || 'image/jpeg' });
+      } catch (error) {
+        console.error('Error al cargar imagen de GCS:', error);
+        toast.error(`No se pudo cargar ${gcsImg.name}`);
+        return null;
+      }
+    };
+
+    // Cargar todas las imágenes seleccionadas
+    Promise.all(gcsImages.map(fetchAndConvertToFile))
+      .then(newFiles => {
+        const validFiles = newFiles.filter(f => f !== null);
+        if (validFiles.length > 0) {
+          setFiles(prev => [...prev, ...validFiles]);
+          toast.success(`${validFiles.length} imagen(es) agregada(s) desde GCS`);
+        }
+        setShowGCSGallery(false);
+      });
   };
 
   const onSave = async () => {
@@ -415,12 +503,24 @@ const ProductEditModal = ({ product, categories, onClose, onSaved, initialInfoMo
                     <div className="mt-1 flex flex-wrap gap-2">
                       {Object.keys(sizeStocks || {}).length ? (
                         Object.keys(sizeStocks).map((s)=> (
-                          <span key={s} className="px-2 py-1 border rounded">{s}: {Number(sizeStocks[s] || 0)}</span>
+                          <span key={s} className="px-2 py-1 border rounded">
+                            {s}: {Number(sizeStocks[s] || 0)}
+                            {salesBySize[s] !== undefined && (
+                              <span className="ml-1 text-green-600 text-xs">
+                                (vendidos: {salesBySize[s]})
+                              </span>
+                            )}
+                          </span>
                         ))
                       ) : (
                         <span className="text-gray-400">—</span>
                       )}
                     </div>
+                    {Object.keys(salesBySize).length > 0 && (
+                      <div className="mt-2 text-xs text-gray-600">
+                        Total vendido: {Object.values(salesBySize).reduce((a, b) => a + b, 0)} unidades
+                      </div>
+                    )}
                   </div>
                   {form.description && (
                     <div className="col-span-2"><span className="text-gray-500">Descripción:</span>
@@ -445,7 +545,17 @@ const ProductEditModal = ({ product, categories, onClose, onSaved, initialInfoMo
                     addLibraryItemToOrder={addLibraryItemToOrder}
                     fileInputRef={fileInputRef}
                     openLibrary={() => { setShowLibrary(true); if (!libraryData.length) loadLibrary(); }}
+                    openGCSGallery={() => setShowGCSGallery(true)}
                   />
+                
+                {/* Gestor de galería GCS */}
+                {showGCSGallery && (
+                  <GCSGalleryModal
+                    onClose={() => setShowGCSGallery(false)}
+                    onSelectImage={handleGCSImageSelect}
+                  />
+                )}
+
                 {showLibrary && (
                   <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50" onClick={() => setShowLibrary(false)}>
                     <div className="bg-white w-full max-w-3xl max-h-[80vh] overflow-hidden flex flex-col" onClick={(e)=> e.stopPropagation()}>

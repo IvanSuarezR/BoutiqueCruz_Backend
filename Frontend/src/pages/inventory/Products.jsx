@@ -23,7 +23,7 @@ const Products = () => {
   const [modalInitialInfo, setModalInitialInfo] = useState(false);
 
   // Filters UI state
-  const [filters, setFilters] = useState({ q: '', category: '', gender: '', sort: '', is_active: '', stock_level: '', colors: [] });
+  const [filters, setFilters] = useState({ q: '', category: '', gender: '', sort: 'recent', is_active: '', stock_level: '', colors: [] });
   // Extensiones de filtros avanzados
   // created_from/created_to (YYYY-MM-DD), stock_min/stock_max numéricos
   const [searchInput, setSearchInput] = useState('');

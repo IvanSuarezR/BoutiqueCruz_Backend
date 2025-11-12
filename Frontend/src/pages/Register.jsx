@@ -33,7 +33,7 @@ const Register = () => {
       };
 
       await registerUser(payload);
-      navigate('/dashboard');
+      navigate('/');
     } catch (error) {
       console.error('Error en registro:', error);
     } finally {

@@ -12,13 +12,14 @@ const Roles = () => {
   const [roles, setRoles] = useState([]);
   const [users, setUsers] = useState([]);
   const [permissions, setPermissions] = useState([]);
+  const [allUsers, setAllUsers] = useState([]); // NUEVO: Todos los usuarios sin paginar para filtrar por rol
 
   const [roleSearch, setRoleSearch] = useState('');
   const [userSearch, setUserSearch] = useState('');
   const [permSearch, setPermSearch] = useState('');
 
   const [selectedRoleId, setSelectedRoleId] = useState(null);
-  const [tab, setTab] = useState('usuarios'); // usuarios | permisos
+  const [tab, setTab] = useState('usuarios'); // usuarios | permisos | buscar
 
   // Selections
   const [selectedAvailableUsers, setSelectedAvailableUsers] = useState([]);
@@ -77,6 +78,15 @@ const Roles = () => {
       setUserCount(usersPageData.count || (usersPageData.results ? usersPageData.results.length : 0));
       setUserPage(page);
       setPermissions(permsData);
+      
+      // NUEVO: Cargar TODOS los usuarios sin límite de paginación para mostrar correctamente los asignados a roles
+      rbacService.getAllUsers().then(allUsersData => {
+        setAllUsers(allUsersData || []);
+      }).catch(err => {
+        console.error('Error loading all users:', err);
+        setAllUsers([]);
+      });
+      
       if (!selectedRoleId && rolesData.length > 0) {
         setSelectedRoleId(rolesData[0].id);
       }
@@ -125,10 +135,12 @@ const Roles = () => {
   const selectedRole = useMemo(() => roles.find(r => r.id === selectedRoleId) || null, [roles, selectedRoleId]);
   const filteredRoles = useMemo(() => roles.filter(r => r.name.toLowerCase().includes(roleSearch.toLowerCase())), [roles, roleSearch]);
 
+  // NUEVO: Usar allUsers (todos sin paginar) para mostrar usuarios asignados al rol seleccionado
   const assignedUsers = useMemo(() => {
     if (!selectedRoleId) return [];
-    return users.filter(u => Array.isArray(u.role_ids) && u.role_ids.includes(selectedRoleId));
-  }, [users, selectedRoleId]);
+    if (!Array.isArray(allUsers) || allUsers.length === 0) return [];
+    return allUsers.filter(u => Array.isArray(u.role_ids) && u.role_ids.includes(selectedRoleId));
+  }, [allUsers, selectedRoleId]);
 
   const availableUsers = useMemo(() => {
     const assignedIds = new Set(assignedUsers.map(u => u.id));
@@ -164,9 +176,14 @@ const Roles = () => {
     try {
       await rbacService.assignUsersToRole(selectedRoleId, selectedAvailableUsers);
       toast.success('Usuarios asignados');
-  const upd = await rbacService.getUsersPage(userPage);
-  setUsers(upd.results || []);
-  setUserCount(upd.count || (upd.results ? upd.results.length : 0));
+      // Actualizar ambas listas
+      const [upd, updAllUsers] = await Promise.all([
+        rbacService.getUsersPage(userPage),
+        rbacService.getAllUsers(),
+      ]);
+      setUsers(upd.results || []);
+      setUserCount(upd.count || (upd.results ? upd.results.length : 0));
+      setAllUsers(updAllUsers);
       setSelectedAvailableUsers([]);
     } catch (err) {
       const msg = err?.response?.data?.detail || err?.response?.data?.error || 'No se pudo asignar usuarios';
@@ -178,9 +195,14 @@ const Roles = () => {
     try {
       await rbacService.revokeUsersFromRole(selectedRoleId, selectedAssignedUsers);
       toast.success('Usuarios removidos');
-  const upd = await rbacService.getUsersPage(userPage);
-  setUsers(upd.results || []);
-  setUserCount(upd.count || (upd.results ? upd.results.length : 0));
+      // Actualizar ambas listas
+      const [upd, updAllUsers] = await Promise.all([
+        rbacService.getUsersPage(userPage),
+        rbacService.getAllUsers(),
+      ]);
+      setUsers(upd.results || []);
+      setUserCount(upd.count || (upd.results ? upd.results.length : 0));
+      setAllUsers(updAllUsers);
       setSelectedAssignedUsers([]);
     } catch (err) {
       const msg = err?.response?.data?.detail || err?.response?.data?.error || 'No se pudo remover usuarios';
@@ -323,9 +345,13 @@ const Roles = () => {
       }
       toast.success('Usuario actualizado');
       // refrescar lista de usuarios
-  const upd = await rbacService.getUsersPage(userPage);
-  setUsers(upd.results || []);
-  setUserCount(upd.count || (upd.results ? upd.results.length : 0));
+      const [upd, updAllUsers] = await Promise.all([
+        rbacService.getUsersPage(userPage),
+        rbacService.getAllUsers(),
+      ]);
+      setUsers(upd.results || []);
+      setUserCount(upd.count || (upd.results ? upd.results.length : 0));
+      setAllUsers(updAllUsers);
       setIsUserModalOpen(false);
     } catch (err) {
       const errors = err?.response?.data || {};
@@ -353,9 +379,13 @@ const Roles = () => {
     try {
       await rbacService.deleteUser(editingUser.id);
       toast.success('Usuario eliminado');
-  const upd = await rbacService.getUsersPage(userPage);
-  setUsers(upd.results || []);
-  setUserCount(upd.count || (upd.results ? upd.results.length : 0));
+      const [upd, updAllUsers] = await Promise.all([
+        rbacService.getUsersPage(userPage),
+        rbacService.getAllUsers(),
+      ]);
+      setUsers(upd.results || []);
+      setUserCount(upd.count || (upd.results ? upd.results.length : 0));
+      setAllUsers(updAllUsers);
       setIsUserModalOpen(false);
       // limpiar selecciones si correspondía
       setSelectedAvailableUsers(prev => prev.filter(id => id !== editingUser.id));
@@ -382,10 +412,14 @@ const Roles = () => {
       }
       toast.success('Usuario creado');
       setIsCreateUserModalOpen(false);
-      // refresh current page
-      const upd = await rbacService.getUsersPage(userPage);
+      // refresh users
+      const [upd, updAllUsers] = await Promise.all([
+        rbacService.getUsersPage(userPage),
+        rbacService.getAllUsers(),
+      ]);
       setUsers(upd.results || []);
       setUserCount(upd.count || (upd.results ? upd.results.length : 0));
+      setAllUsers(updAllUsers);
     } catch (err) {
       const errors = err?.response?.data || {};
       const msg = errors.detail || errors.username?.[0] || errors.email?.[0] || errors.password?.[0] || 'No se pudo crear el usuario';
@@ -465,9 +499,9 @@ const Roles = () => {
               </div>
               <div className="mt-4 border-b border-gray-200">
                 <nav className="-mb-px flex gap-6">
-                  {['usuarios','permisos'].map(t => (
+                  {['usuarios','permisos','buscar'].map(t => (
                     <button key={t} className={`pb-2 text-sm ${tab===t?'border-b-2 border-blue-600 text-blue-600':'text-gray-600 hover:text-gray-900'}`} onClick={() => setTab(t)}>
-                      {t === 'usuarios' ? 'Usuarios' : 'Permisos'}
+                      {t === 'usuarios' ? 'Usuarios' : t === 'permisos' ? 'Permisos' : 'Buscar Usuarios'}
                     </button>
                   ))}
                 </nav>
@@ -488,9 +522,9 @@ const Roles = () => {
                 <button className="btn btn-primary" onClick={openCreateUser}>Nuevo Usuario</button>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Disponibles */}
+                {/* Disponibles (solo de la página actual) */}
                 <div>
-                  <h3 className="text-sm font-medium text-gray-700 mb-2">Disponibles</h3>
+                  <h3 className="text-sm font-medium text-gray-700 mb-2">Sin asignar a este rol (página actual)</h3>
                   <div className="border border-gray-200 max-h-96 overflow-auto divide-y">
                     {availableUsers.map(u => (
                       <label key={u.id} className="flex items-center gap-3 p-2 hover:bg-gray-50">
@@ -513,9 +547,9 @@ const Roles = () => {
                     {availableUsers.length === 0 && <div className="p-3 text-sm text-gray-500">No hay usuarios disponibles.</div>}
                   </div>
                 </div>
-                {/* Asignados */}
+                {/* Asignados a este rol (todos, sin paginar) */}
                 <div>
-                  <h3 className="text-sm font-medium text-gray-700 mb-2">Asignados</h3>
+                  <h3 className="text-sm font-medium text-gray-700 mb-2">Con este rol ({assignedUsers.length})</h3>
                   <div className="border border-gray-200 max-h-96 overflow-auto divide-y">
                     {assignedUsersFiltered.map(u => (
                       <label key={u.id} className="flex items-center gap-3 p-2 hover:bg-gray-50">
@@ -604,6 +638,77 @@ const Roles = () => {
               <div className="flex items-center gap-3 mt-4">
                 <button className="btn btn-primary" disabled={!selectedRoleId || selectedGrantPerms.length===0} onClick={handleGrantPerms}>Asignar permisos</button>
                 <button className="btn btn-secondary" disabled={!selectedRoleId || selectedRevokePerms.length===0} onClick={handleRevokePerms}>Revocar permisos</button>
+              </div>
+            </div>
+          )}
+
+          {tab === 'buscar' && (
+            <div className="card-slim p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <input
+                  className="flex-1 border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500"
+                  placeholder="Buscar usuarios por nombre, usuario o email..."
+                  value={userSearch}
+                  onChange={(e) => setUserSearch(e.target.value)}
+                />
+                <button className="btn btn-primary" onClick={openCreateUser}>Nuevo Usuario</button>
+              </div>
+              <div className="border border-gray-200 max-h-[32rem] overflow-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50 sticky top-0">
+                    <tr>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-700">Usuario</th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-700">Nombre</th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-700">Email</th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-700">Roles</th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-700">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {allUsers
+                      .filter(u => {
+                        if (!userSearch) return true;
+                        const q = userSearch.toLowerCase();
+                        return `${u.first_name} ${u.last_name} ${u.username} ${u.email}`.toLowerCase().includes(q);
+                      })
+                      .map(u => {
+                        const userRoles = (u.role_ids || []).map(roleId => roles.find(r => r.id === roleId)).filter(Boolean);
+                        return (
+                          <tr key={u.id} className="hover:bg-gray-50">
+                            <td className="px-3 py-2 text-sm text-gray-900">@{u.username}</td>
+                            <td className="px-3 py-2 text-sm text-gray-900">{u.first_name} {u.last_name}</td>
+                            <td className="px-3 py-2 text-sm text-gray-500">{u.email}</td>
+                            <td className="px-3 py-2 text-sm">
+                              {userRoles.length === 0 ? (
+                                <span className="text-gray-400 italic">Sin roles</span>
+                              ) : (
+                                <div className="flex flex-wrap gap-1">
+                                  {userRoles.map(role => (
+                                    <span key={role.id} className="inline-block px-2 py-0.5 text-xs bg-blue-100 text-blue-700 rounded">
+                                      {role.name}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+                            </td>
+                            <td className="px-3 py-2 text-sm">
+                              <button className="btn-outline-slim" onClick={() => openEditUser(u.id)}>Editar</button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                  </tbody>
+                </table>
+                {allUsers.filter(u => {
+                  if (!userSearch) return true;
+                  const q = userSearch.toLowerCase();
+                  return `${u.first_name} ${u.last_name} ${u.username} ${u.email}`.toLowerCase().includes(q);
+                }).length === 0 && (
+                  <div className="p-6 text-center text-sm text-gray-500">No se encontraron usuarios.</div>
+                )}
+              </div>
+              <div className="mt-3 text-sm text-gray-600">
+                Total de usuarios: {allUsers.length}
               </div>
             </div>
           )}
@@ -699,10 +804,10 @@ const Roles = () => {
                 <label className="text-sm text-gray-700">Dirección</label>
                 <textarea rows={2} className="w-full border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500" value={userForm.address || ''} onChange={(e)=> setUserForm(prev=> ({...prev, address: e.target.value}))} />
               </div>
-              <div>
+              {/* <div>
                 <label className="text-sm text-gray-700">Tipo de usuario</label>
                 <input className="w-full border border-gray-200 rounded-md bg-gray-50" value={userForm.user_type || ''} readOnly />
-              </div>
+              </div> */}
               <div className="flex items-center gap-2">
                 <input id="chk_active" type="checkbox" className="h-4 w-4" checked={!!userForm.is_active} onChange={(e)=> setUserForm(prev=> ({...prev, is_active: e.target.checked}))} />
                 <label htmlFor="chk_active" className="text-sm text-gray-700">Activo</label>

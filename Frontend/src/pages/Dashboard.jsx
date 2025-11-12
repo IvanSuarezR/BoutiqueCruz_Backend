@@ -202,7 +202,7 @@ const Dashboard = () => {
             </div>
 
             {/* Módulo Configuración */}
-            <div className="card-slim p-6 hover:bg-gray-50 transition-colors cursor-pointer">
+            {/* <div className="card-slim p-6 hover:bg-gray-50 transition-colors cursor-pointer">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-gray-900">Configuración</h3>
                 <svg
@@ -226,7 +226,7 @@ const Dashboard = () => {
                 </svg>
               </div>
               <p className="text-gray-600 text-sm">Configuración del sistema</p>
-            </div>
+            </div> */}
           </div>
         </div>
       </div>

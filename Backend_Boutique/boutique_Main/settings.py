@@ -59,6 +59,7 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt',
     'rest_framework_simplejwt.token_blacklist',
     'django_extensions',
+    'storages',  # django-storages para GCS
     # Local apps
     'accounts',
     'inventory',
@@ -164,9 +165,55 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 
-# Media files (uploaded images)
-MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / 'media'
+# Media files configuration - Google Cloud Storage
+USE_GCS = os.getenv('USE_GCS', 'False').lower() == 'true'
+
+# Google Cloud Storage settings (always define these if using GCS)
+if USE_GCS:
+    GS_BUCKET_NAME = os.getenv('GS_BUCKET_NAME')
+    GS_PROJECT_ID = os.getenv('GS_PROJECT_ID')
+    
+    # Path to credentials file - set as environment variable for google-cloud-storage
+    credentials_path = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
+    if credentials_path and not os.path.isabs(credentials_path):
+        # If relative path, make it absolute from BASE_DIR
+        credentials_path = str(BASE_DIR / credentials_path)
+        os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = credentials_path
+    
+    # IMPORTANT: Make uploaded files publicly accessible
+    GS_DEFAULT_ACL = 'publicRead'
+    
+    # Query string authentication - set to False to use public URLs
+    GS_QUERYSTRING_AUTH = False
+    
+    # Don't overwrite files with the same name (add random suffix)
+    GS_FILE_OVERWRITE = False
+    
+    # Files larger than this will be streamed (5MB)
+    GS_MAX_MEMORY_SIZE = 5242880
+
+# Django 4.2+ STORAGES configuration (replaces DEFAULT_FILE_STORAGE)
+if USE_GCS:
+    STORAGES = {
+        "default": {
+            "BACKEND": "storages.backends.gcloud.GoogleCloudStorage",
+        },
+        "staticfiles": {
+            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+        },
+    }
+    MEDIA_URL = f'https://storage.googleapis.com/{GS_BUCKET_NAME}/'
+else:
+    STORAGES = {
+        "default": {
+            "BACKEND": "django.core.files.storage.FileSystemStorage",
+        },
+        "staticfiles": {
+            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+        },
+    }
+    MEDIA_URL = '/media/'
+    MEDIA_ROOT = BASE_DIR / 'media'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field

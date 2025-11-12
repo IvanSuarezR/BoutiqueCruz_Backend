@@ -55,6 +55,45 @@ const inventoryService = {
     const res = await axiosInstance.delete(`/inventory/categories/${id}/`);
     return res.data;
   },
+  getSalesBySize: async (productId) => {
+    const res = await axiosInstance.get(`/inventory/products/${productId}/sales-by-size/`);
+    return res.data;
+  },
+  
+  // GCS Gallery endpoints
+  getGCSImages: async () => {
+    const res = await axiosInstance.get('/inventory/gcs-gallery/');
+    return res.data;
+  },
+  uploadToGCS: async (files, folder = 'gallery') => {
+    const fd = new FormData();
+    files.forEach(f => fd.append('images', f));
+    if (folder) fd.append('folder', folder);
+    const res = await axiosInstance.post('/inventory/gcs-gallery/upload/', fd);
+    return res.data;
+  },
+  deleteFromGCS: async (path) => {
+    const res = await axiosInstance.delete('/inventory/gcs-gallery/delete/', { data: { path } });
+    return res.data;
+  },
+  createGCSFolder: async (folderName) => {
+    const res = await axiosInstance.post('/inventory/gcs-gallery/create-folder/', { folder: folderName });
+    return res.data;
+  },
+  downloadGCSImage: async (imageUrl) => {
+    const res = await axiosInstance.post('/inventory/gcs-gallery/download/', { url: imageUrl }, { responseType: 'blob' });
+    return res.data; // Returns Blob directly
+  },
+  
+  // Banner management
+  getBanner: async () => {
+    const res = await axiosInstance.get('/inventory/banner/');
+    return res.data;
+  },
+  updateBanner: async (bannerUrl) => {
+    const res = await axiosInstance.post('/inventory/banner/', { banner_url: bannerUrl });
+    return res.data;
+  },
 };
 
 export default inventoryService;

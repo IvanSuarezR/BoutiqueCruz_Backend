@@ -619,6 +619,38 @@ class ProductViewSet(viewsets.ModelViewSet):
         except ProductImage.DoesNotExist:
             return Response({"detail": "Imagen no encontrada"}, status=404)
 
+    @action(detail=True, methods=['get'], url_path='sales-by-size')
+    def sales_by_size(self, request, pk=None):
+        """Devuelve cantidades vendidas por talla/variante para este producto"""
+        product = self.get_object()
+        from orders.models import OrderItem, Order
+        from django.db.models import Sum, Q
+        
+        # Solo contar ventas confirmadas (no borrador ni canceladas/reembolsadas)
+        valid_statuses = ['PENDING_PAYMENT', 'PAID', 'AWAITING_DISPATCH', 'SHIPPED', 'DELIVERED']
+        
+        sales_data = {}
+        
+        # Si el producto tiene variantes, contar por variante
+        variants = product.variants.all()
+        if variants:
+            for variant in variants:
+                sold = OrderItem.objects.filter(
+                    product=product,
+                    variant=variant,
+                    order__status__in=valid_statuses
+                ).aggregate(total=Sum('quantity'))['total'] or 0
+                sales_data[variant.size] = sold
+        else:
+            # Sin variantes, contar ventas totales
+            sold = OrderItem.objects.filter(
+                product=product,
+                order__status__in=valid_statuses
+            ).aggregate(total=Sum('quantity'))['total'] or 0
+            sales_data['total'] = sold
+        
+        return Response({'product_id': product.id, 'sales_by_size': sales_data})
+
     def _safe_delete_product_image(self, img: ProductImage):
         """Delete ProductImage and remove the underlying file only if no other ProductImage references it."""
         try:
@@ -693,6 +725,3 @@ class StockMovementViewSet(viewsets.ModelViewSet):
         else:  # ADJUST uses quantity as absolute delta
             product.stock = (product.stock or 0) + qty
         product.save(update_fields=['stock'])
-from django.shortcuts import render
-
-# Create your views here.

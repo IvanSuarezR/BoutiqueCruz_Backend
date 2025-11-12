@@ -62,6 +62,27 @@ const rbacService = {
     const res = await axiosInstance.get('/auth/users/');
     return unwrap(res.data);
   },
+  getAllUsers: async () => {
+    // Obtener TODOS los usuarios iterando por todas las páginas
+    let allUsers = [];
+    let page = 1;
+    let hasMore = true;
+    
+    while (hasMore) {
+      const res = await axiosInstance.get('/auth/users/', { params: { page } });
+      const data = res.data;
+      
+      if (data.results && data.results.length > 0) {
+        allUsers = allUsers.concat(data.results);
+      }
+      
+      // Continuar si hay más páginas
+      hasMore = !!data.next;
+      page++;
+    }
+    
+    return allUsers;
+  },
   getUsersPage: async (page = 1) => {
     const res = await axiosInstance.get('/auth/users/', { params: { page } });
     return res.data; // {count, next, previous, results}

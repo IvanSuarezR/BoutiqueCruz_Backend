@@ -4,6 +4,12 @@
 
 # Custom folders
 mejoras/
+Backend_Boutique/tests_and_docs/
+tests_and_docs/
+# Google Cloud credentials
+**/credencial/*.json
+credencial/
+*.json
 
 # Python
 *.pyc
