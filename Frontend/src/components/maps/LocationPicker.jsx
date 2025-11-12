@@ -6,9 +6,7 @@ import { useEffect, useRef, useState } from 'react';
 // - onChange: (next: {lat, lng, address, place_id, formatted_address, city?, state?, country?}) => void
 // - height: CSS height for map (default 240px)
 export default function LocationPicker({ value, onChange, height = 240 }) {
-  // Leer de runtime env (window._env_) primero, luego fallback a import.meta.env
-  const runtimeEnv = typeof window !== 'undefined' && window._env_ ? window._env_ : {};
-  const apiKey = runtimeEnv.VITE_GOOGLE_MAPS_API_KEY || import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+  const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
   const [loaded, setLoaded] = useState(!!window.google);
   const [error, setError] = useState(null);
   const mapRef = useRef(null);
