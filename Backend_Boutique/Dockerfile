@@ -9,12 +9,12 @@ FROM python:3.11-slim
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PORT=8080
 
-# Instalar dependencias del sistema
+# Instalar dependencias del sistema necesarias
 RUN apt-get update && apt-get install -y \
     gcc \
-    postgresql-client \
     libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
@@ -23,9 +23,9 @@ WORKDIR /app
 
 # Copiar requirements y instalar dependencias Python
 COPY requirements.txt .
-RUN pip install --upgrade pip && \
-    pip install -r requirements.txt && \
-    pip install gunicorn
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt && \
+    pip install --no-cache-dir gunicorn
 
 # Copiar el código de la aplicación
 COPY . .
@@ -33,15 +33,15 @@ COPY . .
 # Crear directorios necesarios
 RUN mkdir -p /app/staticfiles /app/media
 
-# Recolectar archivos estáticos
-RUN python manage.py collectstatic --noinput || true
-
 # Exponer puerto 8080 (requerido por Cloud Run)
 EXPOSE 8080
 
-# Script de inicio
-COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
-
-# Ejecutar con gunicorn
-CMD ["/entrypoint.sh"]
+# Comando de inicio directo con gunicorn
+CMD python manage.py migrate --noinput && \
+    gunicorn boutique_Main.wsgi:application \
+    --bind 0.0.0.0:$PORT \
+    --workers 2 \
+    --threads 4 \
+    --timeout 120 \
+    --access-logfile - \
+    --error-logfile -

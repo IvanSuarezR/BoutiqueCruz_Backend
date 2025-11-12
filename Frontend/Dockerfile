@@ -32,9 +32,5 @@ COPY nginx.conf /etc/nginx/conf.d/default.conf
 # Exponer puerto 8080 (requerido por Cloud Run)
 EXPOSE 8080
 
-# Script para reemplazar variables de entorno en runtime
-COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
-
 # Comando de inicio
-CMD ["/entrypoint.sh"]
+CMD ["nginx", "-g", "daemon off;"]
