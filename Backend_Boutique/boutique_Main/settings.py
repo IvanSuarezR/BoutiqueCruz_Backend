@@ -120,8 +120,9 @@ if USE_POSTGRES:
             'USER': os.getenv('POSTGRES_USER'),
             'PASSWORD': os.getenv('POSTGRES_PASSWORD'),
             'HOST': os.getenv('POSTGRES_HOST'),
-            'PORT': os.getenv('POSTGRES_PORT'),
-            'CONN_MAX_AGE': int(os.getenv('POSTGRES_CONN_MAX_AGE')),
+            # Convert port and conn_max_age to int with safe defaults
+            'PORT': int(os.getenv('POSTGRES_PORT') or 5432),
+            'CONN_MAX_AGE': int(os.getenv('POSTGRES_CONN_MAX_AGE') or 0),
         }
     }
 else:
