@@ -25,12 +25,16 @@ load_dotenv(BASE_DIR / '.env')
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-8b+tbft_ui959m618*08p7ub-0#khflmf&@@ruc6-#rk=j3gr='
+SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-8b+tbft_ui959m618*08p7ub-0#khflmf&@@ruc6-#rk=j3gr=')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv('DEBUG', 'True') == 'True'
 
-ALLOWED_HOSTS = []
+# Allowed hosts - para Cloud Run
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+# Agregar dominio de Cloud Run automáticamente
+if os.getenv('K_SERVICE'):  # Variable presente en Cloud Run
+    ALLOWED_HOSTS.append('*')  # O puedes especificar el dominio exacto
 
 # Stripe configuration (test keys). Provide these in .env file:
 # STRIPE_SECRET_KEY=sk_test_...
@@ -251,12 +255,18 @@ SIMPLE_JWT = {
 }
 
 # CORS Configuration
+# Agregar orígenes desde variable de entorno para Cloud Run
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
     "http://localhost:5174",
     "http://127.0.0.1:5174",
 ]
+
+# Agregar orígenes adicionales desde variable de entorno (para producción)
+additional_origins = os.getenv('CORS_ALLOWED_ORIGINS', '')
+if additional_origins:
+    CORS_ALLOWED_ORIGINS.extend([origin.strip() for origin in additional_origins.split(',') if origin.strip()])
 
 CORS_ALLOW_CREDENTIALS = True
 

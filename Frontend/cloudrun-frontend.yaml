@@ -1,0 +1,20 @@
+# ==========================================
+# Cloud Run Configuration - Frontend
+# ==========================================
+
+# Para desplegar el frontend:
+# gcloud run deploy boutique-frontend \
+#   --source ./Frontend \
+#   --platform managed \
+#   --region us-central1 \
+#   --allow-unauthenticated \
+#   --port 8080 \
+#   --memory 512Mi \
+#   --cpu 1 \
+#   --min-instances 0 \
+#   --max-instances 5 \
+#   --set-env-vars "VITE_API_URL=https://boutique-backend-xxxxx.run.app"
+
+# Variables de entorno en Cloud Run Console:
+# - VITE_API_URL=https://tu-backend-url.run.app
+# - VITE_STRIPE_PUBLISHABLE_KEY=pk_live_...

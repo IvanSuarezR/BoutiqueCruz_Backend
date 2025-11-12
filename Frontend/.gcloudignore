@@ -1,0 +1,28 @@
+# ==========================================
+# .gcloudignore para Frontend
+# ==========================================
+
+# Node
+node_modules/
+npm-debug.log*
+
+# Build
+dist/
+dist-ssr/
+
+# Environment
+.env
+.env.local
+
+# Git & IDE
+.git/
+.gitignore
+.vscode/
+.idea/
+
+# Tests
+coverage/
+
+# Documentation
+*.md
+!README.md
