@@ -17,6 +17,16 @@ RUN npm ci
 # Copiar código fuente
 COPY . .
 
+# Argumentos de construcción (Build Args)
+ARG VITE_API_URL
+ARG VITE_STRIPE_PUBLISHABLE_KEY
+ARG VITE_GOOGLE_MAPS_API_KEY
+
+# Establecer variables de entorno para el build
+ENV VITE_API_URL=$VITE_API_URL
+ENV VITE_STRIPE_PUBLISHABLE_KEY=$VITE_STRIPE_PUBLISHABLE_KEY
+ENV VITE_GOOGLE_MAPS_API_KEY=$VITE_GOOGLE_MAPS_API_KEY
+
 # Build de producción
 RUN npm run build
 
@@ -29,12 +39,8 @@ COPY --from=builder /app/dist /usr/share/nginx/html
 # Copiar configuración de nginx personalizada
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Copiar entrypoint para generar env.js en runtime
-COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
-
 # Exponer puerto 8080 (requerido por Cloud Run)
 EXPOSE 8080
 
-# Usar entrypoint que crea env.js y arranca nginx
-ENTRYPOINT ["/entrypoint.sh"]
+# Arrancar Nginx directamente
+CMD ["nginx", "-g", "daemon off;"]

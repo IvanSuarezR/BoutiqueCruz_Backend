@@ -127,7 +127,7 @@ const Checkout = () => {
   // Stripe logic
   const stripePromise = useMemo(()=>{
     const runtimeEnv = typeof window !== 'undefined' && window._env_ ? window._env_ : {};
-    const pk = runtimeEnv.VITE_STRIPE_PUBLISHABLE_KEY || import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
+    const pk = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
     return pk ? loadStripe(pk) : null;
   },[]);
   // Mantener opciones estables para evitar remount del <Elements>

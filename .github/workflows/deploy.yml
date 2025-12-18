@@ -47,23 +47,25 @@ jobs:
             --set-env-vars "USE_POSTGRES=true,USE_GCS=true,DB_PASSWORD=${{ secrets.DB_PASSWORD }},DB_HOST=${{ secrets.DB_HOST }},DB_NAME=${{ secrets.DB_NAME }},SECRET_KEY=${{ secrets.SECRET_KEY }},DJANGO_SETTINGS_MODULE=boutique_Main.settings,DJANGO_SUPERUSER_USERNAME=${{ secrets.DJANGO_SUPERUSER_USERNAME }},DJANGO_SUPERUSER_PASSWORD=${{ secrets.DJANGO_SUPERUSER_PASSWORD }},DJANGO_SUPERUSER_EMAIL=${{ secrets.DJANGO_SUPERUSER_EMAIL }},GS_BUCKET_NAME=${{ secrets.GS_BUCKET_NAME }},GS_PROJECT_ID=${{ steps.auth.outputs.project_id }},GROQ_API_KEY=${{ secrets.GROQ_API_KEY }}"
 
       # ==================================================================
-      # FRONTEND DEPLOYMENT (Runtime Injection)
+      # FRONTEND DEPLOYMENT (Build-time Injection)
       # ==================================================================
       - name: 'Build, Push and Deploy Frontend'
         run: |-
           cd Frontend
           
-          # Build image (No build args needed for runtime injection!)
-          docker build -t gcr.io/${{ steps.auth.outputs.project_id }}/boutique-frontend:${{ github.sha }} .
+          # Build image with Build Args
+          docker build \
+            --build-arg VITE_API_URL="${{ secrets.VITE_API_URL }}" \
+            --build-arg VITE_STRIPE_PUBLISHABLE_KEY="${{ secrets.VITE_STRIPE_PUBLISHABLE_KEY }}" \
+            --build-arg VITE_GOOGLE_MAPS_API_KEY="${{ secrets.VITE_GOOGLE_MAPS_API_KEY }}" \
+            -t gcr.io/${{ steps.auth.outputs.project_id }}/boutique-frontend:${{ github.sha }} .
           
           # Push image
           docker push gcr.io/${{ steps.auth.outputs.project_id }}/boutique-frontend:${{ github.sha }}
           
-          # Deploy to Cloud Run with Environment Variables
-          # These variables will be read by entrypoint.sh to generate env.js
+          # Deploy to Cloud Run
           gcloud run deploy boutique-frontend \
             --image gcr.io/${{ steps.auth.outputs.project_id }}/boutique-frontend:${{ github.sha }} \
             --platform managed \
             --region us-central1 \
-            --allow-unauthenticated \
-            --set-env-vars "VITE_API_URL=${{ secrets.VITE_API_URL }},VITE_STRIPE_PUBLISHABLE_KEY=${{ secrets.VITE_STRIPE_PUBLISHABLE_KEY }},VITE_GOOGLE_MAPS_API_KEY=${{ secrets.VITE_GOOGLE_MAPS_API_KEY }}"
+            --allow-unauthenticated
