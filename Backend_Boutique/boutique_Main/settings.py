@@ -262,6 +262,9 @@ SIMPLE_JWT = {
 }
 
 # CORS Configuration
+# Permitir todos los orígenes temporalmente para descartar problemas de CORS vs Crash
+CORS_ALLOW_ALL_ORIGINS = True
+
 # Agregar orígenes desde variable de entorno para Cloud Run
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
