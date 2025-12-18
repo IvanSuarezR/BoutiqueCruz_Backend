@@ -12,8 +12,8 @@ ENV_FILE="$WWW_DIR/env.js"
 
 echo "🚀 Generando $ENV_FILE desde variables de entorno..."
 echo "   - VITE_API_URL: ${VITE_API_URL:-'(vacío)'}"
-echo "   - VITE_GOOGLE_MAPS_API_KEY: ${VITE_GOOGLE_MAPS_API_KEY:0:5}..."
-echo "   - VITE_STRIPE_PUBLISHABLE_KEY: ${VITE_STRIPE_PUBLISHABLE_KEY:0:5}..."
+echo "   - VITE_GOOGLE_MAPS_API_KEY: ${VITE_GOOGLE_MAPS_API_KEY}..."
+echo "   - VITE_STRIPE_PUBLISHABLE_KEY: ${VITE_STRIPE_PUBLISHABLE_KEY}..."
 
 cat > "$ENV_FILE" <<EOF
 window._env_ = {
