@@ -42,7 +42,8 @@ jobs:
             --image gcr.io/${{ steps.auth.outputs.project_id }}/boutique-backend:${{ github.sha }} \
             --platform managed \
             --region us-central1 \
-            --allow-unauthenticated \
+            --allow-unauthenticated \            
+            --add-cloudsql-instances examen2-481522:us-central1:examen2 \            
             --set-env-vars "USE_POSTGRES=true,USE_GCS=true,DB_PASSWORD=${{ secrets.DB_PASSWORD }},DB_HOST=${{ secrets.DB_HOST }},DB_NAME=${{ secrets.DB_NAME }},SECRET_KEY=${{ secrets.SECRET_KEY }},DJANGO_SETTINGS_MODULE=boutique_Main.settings,DJANGO_SUPERUSER_USERNAME=${{ secrets.DJANGO_SUPERUSER_USERNAME }},DJANGO_SUPERUSER_PASSWORD=${{ secrets.DJANGO_SUPERUSER_PASSWORD }},DJANGO_SUPERUSER_EMAIL=${{ secrets.DJANGO_SUPERUSER_EMAIL }},GS_BUCKET_NAME=${{ secrets.GS_BUCKET_NAME }},GS_PROJECT_ID=${{ secrets.GS_PROJECT_ID }},GROQ_API_KEY=${{ secrets.GROQ_API_KEY }}"
 
       # ==================================================================

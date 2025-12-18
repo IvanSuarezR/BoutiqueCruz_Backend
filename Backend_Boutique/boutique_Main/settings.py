@@ -272,10 +272,18 @@ CORS_ALLOWED_ORIGINS = [
     "https://boutique-backend-708542243344.us-central1.run.app",
 ]
 
+# CSRF Trusted Origins (Required for Django 4.0+)
+CSRF_TRUSTED_ORIGINS = [
+    "https://boutique-frontend-708542243344.us-central1.run.app",
+    "https://boutique-backend-708542243344.us-central1.run.app",
+]
+
 # Agregar orígenes adicionales desde variable de entorno (para producción)
 additional_origins = os.getenv('CORS_ALLOWED_ORIGINS', '')
 if additional_origins:
-    CORS_ALLOWED_ORIGINS.extend([origin.strip() for origin in additional_origins.split(',') if origin.strip()])
+    origins_list = [origin.strip() for origin in additional_origins.split(',') if origin.strip()]
+    CORS_ALLOWED_ORIGINS.extend(origins_list)
+    CSRF_TRUSTED_ORIGINS.extend(origins_list)
 
 CORS_ALLOW_CREDENTIALS = True
 
