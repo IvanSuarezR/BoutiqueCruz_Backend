@@ -110,14 +110,8 @@ def upload_to_gcs(request):
             except Exception as e:
                 print(f"Warning setting cache control: {e}")
 
-            # Intentar hacer público (puede fallar si el bucket tiene Uniform Bucket Level Access)
-            try:
-                blob.make_public()
-            except Exception as e:
-                print(f"WARNING: Could not make blob public: {e}")
-                # Si falla, es posible que el bucket tenga "Uniform Bucket-Level Access"
-                # En ese caso, el bucket debe tener el rol "Storage Object Viewer" para "allUsers"
-                pass
+            # No intentamos hacer público el blob explícitamente porque usamos Uniform Bucket-Level Access
+            # La visibilidad depende de los permisos del bucket (allUsers -> Storage Object Viewer)
             
             # Construir URL pública explícita
             public_url = f"https://storage.googleapis.com/{settings.GS_BUCKET_NAME}/{path}"

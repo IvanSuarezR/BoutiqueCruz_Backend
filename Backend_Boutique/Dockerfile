@@ -34,4 +34,5 @@ EXPOSE 8080
 ENTRYPOINT ["/entrypoint.sh"]
 
 # Comando por defecto (puede ser sobreescrito por el entrypoint o Cloud Run)
-CMD ["gunicorn", "--bind", "0.0.0.0:8080", "boutique_Main.wsgi:application"]
+# Aumentamos el timeout a 120s para evitar 502 en subidas lentas a GCS
+CMD ["gunicorn", "--bind", "0.0.0.0:8080", "--timeout", "120", "boutique_Main.wsgi:application"]
