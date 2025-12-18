@@ -6,7 +6,7 @@ echo "🚀 Iniciando entrypoint del Backend..."
 # Ejecutar migraciones
 echo "📦 Aplicando migraciones de base de datos..."
 python manage.py migrate --noinput
-python manage.py seed_rbac --noinput
+python manage.py seed_rbac
 
 # Recolectar archivos estáticos (si usas WhiteNoise o similar, o para subir a GCS)
 # echo "🎨 Recolectando archivos estáticos..."
