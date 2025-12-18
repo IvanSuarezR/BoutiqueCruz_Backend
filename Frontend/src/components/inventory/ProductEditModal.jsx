@@ -114,7 +114,15 @@ const ImageThumbnails = ({ combined, primaryIndex, setPrimaryIndex, setExistingI
             >
               ×
             </button>
-            <img src={src} alt={`thumb-${idx}`} className="w-full h-full object-cover pointer-events-none" />
+            <img 
+              src={src} 
+              alt={`thumb-${idx}`} 
+              className="w-full h-full object-cover pointer-events-none" 
+              onError={(e) => {
+                e.target.onerror = null;
+                e.target.src = 'https://via.placeholder.com/150?text=Error';
+              }}
+            />
           </div>
         );
       })}
@@ -297,55 +305,48 @@ const ProductEditModal = ({ product, categories, onClose, onSaved, initialInfoMo
   // Manejar selección de imágenes desde GCS Gallery
   const handleGCSImageSelect = (gcsImages) => {
     // gcsImages es un array de objetos { name, url, size, content_type }
-    const fetchAndConvertToFile = async (gcsImg) => {
-      try {
-        const filename = gcsImg.name.split('/').pop();
-        
-        // Verificar duplicados de manera más estricta
-        // 1. Verificar en files[] por nombre
-        const isDuplicateInFiles = files.some(f => f.name === filename);
-        
-        // 2. Verificar en existingImages por nombre de archivo (sin query params ni hash)
-        const isDuplicateInExisting = existingImages.some(img => {
-          const imgUrl = typeof img === 'string' ? img : (img?.url || img?.image || img?.src);
-          if (!imgUrl) return false;
-          // Extraer solo el nombre del archivo, removiendo path, query params y hash
-          const existingFilename = imgUrl.split('/').pop().split('?')[0].split('#')[0];
-          return existingFilename === filename;
-        });
-        
-        if (isDuplicateInFiles || isDuplicateInExisting) {
-          console.log(`Imagen duplicada detectada: ${filename}, omitiendo...`);
-          return null;
-        }
-        
-        // Usar el proxy del backend para descargar la imagen
-        const response = await inventoryService.downloadGCSImage(gcsImg.url);
-        return new File([response], filename, { type: gcsImg.content_type || 'image/jpeg' });
-      } catch (error) {
-        console.error('Error al cargar imagen de GCS:', error);
-        toast.error(`No se pudo cargar ${gcsImg.name}`);
-        return null;
-      }
-    };
-
-    // Cargar todas las imágenes seleccionadas
-    Promise.all(gcsImages.map(fetchAndConvertToFile))
-      .then(newFiles => {
-        const validFiles = newFiles.filter(f => f !== null);
-        if (validFiles.length > 0) {
-          setFiles(prev => [...prev, ...validFiles]);
-          const skipped = gcsImages.length - validFiles.length;
-          if (skipped > 0) {
-            toast.success(`${validFiles.length} imagen(es) agregada(s), ${skipped} duplicada(s) omitida(s)`);
-          } else {
-            toast.success(`${validFiles.length} imagen(es) agregada(s) desde GCS`);
-          }
-        } else if (gcsImages.length > 0) {
-          toast.info('Todas las imágenes seleccionadas ya estaban agregadas');
-        }
-        setShowGCSGallery(false);
+    
+    // Filtrar duplicados
+    const newImages = gcsImages.filter(gcsImg => {
+      const filename = gcsImg.name.split('/').pop();
+      
+      // 1. Verificar en files[] por nombre
+      const isDuplicateInFiles = files.some(f => f.name === filename);
+      
+      // 2. Verificar en existingImages
+      const isDuplicateInExisting = existingImages.some(img => {
+        const imgUrl = typeof img === 'string' ? img : (img?.url || img?.image || img?.src);
+        if (!imgUrl) return false;
+        // Comparar URLs completas o nombres de archivo
+        if (imgUrl === gcsImg.url) return true;
+        const existingFilename = imgUrl.split('/').pop().split('?')[0].split('#')[0];
+        return existingFilename === filename;
       });
+      
+      return !isDuplicateInFiles && !isDuplicateInExisting;
+    });
+
+    if (newImages.length > 0) {
+      // Agregar como imágenes existentes (por URL) en lugar de descargar y resubir
+      // Esto evita errores de CORS/500 y ahorra ancho de banda
+      const newExisting = newImages.map(img => ({ 
+        url: img.url, 
+        name: img.name,
+        // id: undefined // Importante: sin ID para que el backend sepa que es nueva vinculación
+      }));
+      
+      setExistingImages(prev => [...prev, ...newExisting]);
+      
+      const skipped = gcsImages.length - newImages.length;
+      if (skipped > 0) {
+        toast.success(`${newImages.length} imagen(es) vinculada(s), ${skipped} duplicada(s) omitida(s)`);
+      } else {
+        toast.success(`${newImages.length} imagen(es) vinculada(s) desde GCS`);
+      }
+    } else if (gcsImages.length > 0) {
+      toast.success('Todas las imágenes seleccionadas ya estaban agregadas', { icon: 'ℹ️' });
+    }
+    setShowGCSGallery(false);
   };
 
   const onSave = async () => {

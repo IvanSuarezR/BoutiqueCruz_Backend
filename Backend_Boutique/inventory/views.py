@@ -224,15 +224,28 @@ class ProductViewSet(viewsets.ModelViewSet):
     def _url_to_rel_media(self, url: str):
         try:
             from urllib.parse import urlparse
-            p = urlparse(str(url)).path or ''
-            # Typical: /media/products/2025/11/file.jpg -> products/2025/11/file.jpg
+            from django.conf import settings
+            
+            parsed = urlparse(str(url))
+            p = parsed.path or ''
             if p.startswith('/'): p = p[1:]
+            
+            # Handle GCS URLs: /BUCKET_NAME/path/to/file
+            if settings.USE_GCS and settings.GS_BUCKET_NAME:
+                bucket_prefix = f"{settings.GS_BUCKET_NAME}/"
+                if p.startswith(bucket_prefix):
+                    return p[len(bucket_prefix):]
+            
+            # Handle local media URLs
             if p.startswith('media/'):
                 return p[len('media/'):]
-            # If MEDIA_URL is configured differently, try to find 'products/' segment
-            idx = p.find('products/')
-            if idx >= 0:
-                return p[idx:]
+            
+            # Fallback: try to find common folders
+            for folder in ['products/', 'gallery/', 'uploads/']:
+                idx = p.find(folder)
+                if idx >= 0:
+                    return p[idx:]
+            
             return p
         except Exception:
             return None
@@ -352,6 +365,8 @@ class ProductViewSet(viewsets.ModelViewSet):
                     if etype == 'existing':
                         # Imagen que ya existe en el producto
                         img_id = entry.get('id')
+                        url = entry.get('url', '')
+                        
                         if img_id and int(img_id) in existing_images:
                             img = existing_images[int(img_id)]
                             if img.id not in processed_existing_ids:
@@ -360,11 +375,46 @@ class ProductViewSet(viewsets.ModelViewSet):
                                 processed_existing_ids.add(img.id)
                                 
                                 # Marcar como primary si corresponde
-                                url = entry.get('url', '')
                                 if primary_image_url and url and str(url) == str(primary_image_url):
                                     primary_target = img
                                 
                                 next_order += 1
+                        elif not img_id and url:
+                            # Caso: Imagen agregada por URL (ej: desde GCS Gallery) sin ID previo
+                            rel_path = self._url_to_rel_media(url)
+                            if rel_path:
+                                # Verificar si ya existe en el producto (por si acaso)
+                                found_img = None
+                                for img in existing_images.values():
+                                    try:
+                                        if str(img.image.name) == rel_path:
+                                            found_img = img
+                                            break
+                                    except Exception:
+                                        pass
+                                
+                                if found_img:
+                                    if found_img.id not in processed_existing_ids:
+                                        found_img.sort_order = next_order
+                                        found_img.save(update_fields=['sort_order'])
+                                        processed_existing_ids.add(found_img.id)
+                                        if primary_image_url and str(url) == str(primary_image_url):
+                                            primary_target = found_img
+                                        next_order += 1
+                                else:
+                                    # Crear nueva referencia a imagen existente en storage
+                                    try:
+                                        new_img = ProductImage.objects.create(
+                                            product=product,
+                                            image=rel_path,
+                                            sort_order=next_order
+                                        )
+                                        processed_existing_ids.add(new_img.id)
+                                        if primary_image_url and str(url) == str(primary_image_url):
+                                            primary_target = new_img
+                                        next_order += 1
+                                    except Exception as e:
+                                        print(f"Error linking existing image {rel_path}: {e}")
                     
                     elif etype == 'new':
                         # Archivo nuevo subido

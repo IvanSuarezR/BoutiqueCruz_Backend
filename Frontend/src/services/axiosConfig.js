@@ -1,6 +1,10 @@
 import axios from 'axios';
-//  || 'http://localhost:8000/api'
-const API_URL = import.meta.env.VITE_API_URL;
+
+// Runtime environment variables (injected by entrypoint.sh)
+const runtimeEnv = typeof window !== 'undefined' && window._env_ ? window._env_ : {};
+
+// Use 127.0.0.1 instead of localhost to avoid IPv6 issues on Windows
+const API_URL = runtimeEnv.VITE_API_URL || import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api';
 
 console.debug('Using API_URL =', API_URL);
 
@@ -12,7 +16,7 @@ const axiosInstance = axios.create({
 axiosInstance.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('access_token');
-    if (token) {
+    if (token && token !== 'undefined' && token !== 'null') {
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;

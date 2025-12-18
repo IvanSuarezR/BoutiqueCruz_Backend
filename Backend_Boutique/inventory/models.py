@@ -115,3 +115,27 @@ class StockMovement(models.Model):
 
     def __str__(self) -> str:
         return f"{self.get_movement_type_display()} {self.quantity} {self.product}"
+
+
+class SiteConfiguration(models.Model):
+    """
+    Modelo Singleton para configuraciones globales del sitio, como el banner.
+    """
+    banner_url = models.URLField(max_length=500, blank=True, null=True, help_text="URL del banner principal del sitio")
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Configuración del Sitio"
+        verbose_name_plural = "Configuración del Sitio"
+
+    def save(self, *args, **kwargs):
+        # Asegurar que solo exista una instancia
+        if not self.pk and SiteConfiguration.objects.exists():
+            # Si ya existe uno, actualizar el existente en lugar de crear uno nuevo
+            existing = SiteConfiguration.objects.first()
+            existing.banner_url = self.banner_url
+            return existing.save()
+        return super(SiteConfiguration, self).save(*args, **kwargs)
+
+    def __str__(self):
+        return "Configuración Global"

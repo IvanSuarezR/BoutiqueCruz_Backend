@@ -19,6 +19,7 @@ __pycache__/
 venv/
 env/
 ENV/
+ENTORNO
 
 # Node
 node_modules/

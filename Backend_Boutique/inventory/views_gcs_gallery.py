@@ -76,21 +76,55 @@ def upload_to_gcs(request):
     folder = request.data.get('folder', 'gallery').strip('/')
     
     try:
+        # Usar cliente nativo de GCS para mayor control y evitar problemas con django-storages ACLs
+        client = storage.Client(project=settings.GS_PROJECT_ID)
+        bucket = client.bucket(settings.GS_BUCKET_NAME)
+        
         uploaded = []
+        import uuid
+        from datetime import datetime
         
         for file in files:
-            # Construir path: folder/YYYY/MM/filename
-            from datetime import datetime
+            # Construir path: folder/YYYY/MM/filename_uuid.ext
             now = datetime.now()
-            path = f"{folder}/{now.year}/{now.month:02d}/{file.name}"
+            ext = os.path.splitext(file.name)[1]
+            name_without_ext = os.path.splitext(file.name)[0]
+            # Sanitize filename simple
+            name_clean = "".join(c for c in name_without_ext if c.isalnum() or c in ('-', '_')).strip()
+            if not name_clean:
+                name_clean = "image"
+                
+            filename = f"{name_clean}_{uuid.uuid4().hex[:8]}{ext}"
+            path = f"{folder}/{now.year}/{now.month:02d}/{filename}"
             
-            # Guardar usando el storage de Django
-            saved_path = default_storage.save(path, file)
-            url = default_storage.url(saved_path)
+            blob = bucket.blob(path)
+            
+            # Reset file pointer just in case
+            file.seek(0)
+            blob.upload_from_file(file, content_type=file.content_type)
+            
+            # Configurar Cache-Control para mejor rendimiento
+            try:
+                blob.cache_control = 'public, max-age=31536000'
+                blob.patch()
+            except Exception as e:
+                print(f"Warning setting cache control: {e}")
+
+            # Intentar hacer público (puede fallar si el bucket tiene Uniform Bucket Level Access)
+            try:
+                blob.make_public()
+            except Exception as e:
+                print(f"WARNING: Could not make blob public: {e}")
+                # Si falla, es posible que el bucket tenga "Uniform Bucket-Level Access"
+                # En ese caso, el bucket debe tener el rol "Storage Object Viewer" para "allUsers"
+                pass
+            
+            # Construir URL pública explícita
+            public_url = f"https://storage.googleapis.com/{settings.GS_BUCKET_NAME}/{path}"
             
             uploaded.append({
-                'name': saved_path,
-                'url': url,
+                'name': path,
+                'url': public_url,
                 'original_name': file.name,
                 'size': file.size,
             })
@@ -101,6 +135,9 @@ def upload_to_gcs(request):
         })
     
     except Exception as e:
+        import traceback
+        print(f"Error uploading to GCS: {str(e)}")
+        print(traceback.format_exc())
         return Response({
             'error': f'Error al subir imágenes: {str(e)}'
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -187,6 +224,7 @@ def download_gcs_image(request):
     """
     from django.http import HttpResponse
     import requests
+    import traceback
     
     image_url = request.data.get('url')
     if not image_url:
@@ -195,8 +233,23 @@ def download_gcs_image(request):
         }, status=status.HTTP_400_BAD_REQUEST)
     
     try:
+        print(f"Downloading image from: {image_url}")
+        
+        # Headers para simular un navegador y evitar bloqueos
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        }
+        
         # Descargar imagen desde GCS
-        response = requests.get(image_url, timeout=10)
+        # verify=False para evitar problemas de certificados en desarrollo local
+        response = requests.get(image_url, timeout=30, verify=False, headers=headers)
+        
+        if response.status_code != 200:
+            print(f"Error downloading from GCS. Status: {response.status_code}, Content: {response.text[:200]}")
+            return Response({
+                'error': f'Error remoto: {response.status_code}'
+            }, status=status.HTTP_502_BAD_GATEWAY)
+            
         response.raise_for_status()
         
         # Devolver la imagen como respuesta
@@ -204,6 +257,8 @@ def download_gcs_image(request):
         return HttpResponse(response.content, content_type=content_type)
     
     except Exception as e:
+        print(f"Error downloading image: {str(e)}")
+        print(traceback.format_exc())
         return Response({
             'error': f'Error al descargar imagen: {str(e)}'
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

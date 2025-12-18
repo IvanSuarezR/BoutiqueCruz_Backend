@@ -1,48 +1,37 @@
-# ==========================================
-# Dockerfile para Backend Django
-# Cloud Run Compatible
-# ==========================================
-
+# Usar una imagen base oficial de Python
 FROM python:3.11-slim
 
-# Variables de entorno para Python
-ENV PYTHONUNBUFFERED=1 \
-    PYTHONDONTWRITEBYTECODE=1 \
-    PIP_NO_CACHE_DIR=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1 \
-    PORT=8080
+# Establecer variables de entorno
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+
+# Establecer el directorio de trabajo
+WORKDIR /app
 
 # Instalar dependencias del sistema necesarias
+# libpq-dev es para psycopg2 (PostgreSQL)
 RUN apt-get update && apt-get install -y \
     gcc \
     libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Crear directorio de trabajo
-WORKDIR /app
-
-# Copiar requirements y instalar dependencias Python
+# Copiar el archivo de requerimientos e instalar dependencias
 COPY requirements.txt .
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt && \
-    pip install --no-cache-dir gunicorn
+RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install gunicorn
 
-# Copiar el código de la aplicación
+# Copiar el resto del código de la aplicación
 COPY . .
 
-# Crear directorios necesarios
-RUN mkdir -p /app/staticfiles /app/media
+# Copiar y dar permisos al entrypoint
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
-# Exponer puerto 8080 (requerido por Cloud Run)
+# Exponer el puerto 8080 (Cloud Run default)
 EXPOSE 8080
 
-# Comando de inicio directo con gunicorn
-CMD python manage.py collectstatic --noinput && \
-    python manage.py migrate --noinput && \
-    gunicorn boutique_Main.wsgi:application \
-    --bind 0.0.0.0:$PORT \
-    --workers 2 \
-    --threads 4 \
-    --timeout 120 \
-    --access-logfile - \
-    --error-logfile -
+# Usar entrypoint
+ENTRYPOINT ["/entrypoint.sh"]
+
+# Comando por defecto (puede ser sobreescrito por el entrypoint o Cloud Run)
+CMD ["gunicorn", "--bind", "0.0.0.0:8080", "boutique_Main.wsgi:application"]

@@ -33,7 +33,7 @@ SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-8b+tbft_ui959m618*08p7ub-0
 DEBUG = os.getenv('DEBUG', 'True') == 'True'
 
 # Allowed hosts - para Cloud Run
-ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1, https://boutique-frontend-238562702765.us-central1.run.app').split(',')
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 # Agregar dominio de Cloud Run automáticamente
 if os.getenv('K_SERVICE'):  # Variable presente en Cloud Run
     ALLOWED_HOSTS.append('*')  # O puedes especificar el dominio exacto
@@ -118,10 +118,10 @@ if USE_POSTGRES:
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.postgresql',
-            'NAME': os.getenv('POSTGRES_DB'),
-            'USER': os.getenv('POSTGRES_USER'),
-            'PASSWORD': os.getenv('POSTGRES_PASSWORD'),
-            'HOST': os.getenv('POSTGRES_HOST'),
+            'NAME': os.getenv('POSTGRES_DB', 'boutique_ropa'),
+            'USER': os.getenv('POSTGRES_USER', 'postgres'),
+            'PASSWORD': os.getenv('POSTGRES_PASSWORD', '2427'),
+            'HOST': os.getenv('POSTGRES_HOST','localhost'),
             # Convert port and conn_max_age to int with safe defaults
             'PORT': int(os.getenv('POSTGRES_PORT') or 5432),
             'CONN_MAX_AGE': int(os.getenv('POSTGRES_CONN_MAX_AGE') or 0),
@@ -191,7 +191,8 @@ if USE_GCS:
         os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = credentials_path
     
     # IMPORTANT: Make uploaded files publicly accessible
-    GS_DEFAULT_ACL = 'publicRead'
+    # Set to None because the bucket has Uniform Bucket-Level Access enabled
+    GS_DEFAULT_ACL = None
     
     # Query string authentication - set to False to use public URLs
     GS_QUERYSTRING_AUTH = False
@@ -267,8 +268,6 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:5173",
     "http://localhost:5174",
     "http://127.0.0.1:5174",
-    "https://boutique-backend-st7ukzaztq-uc.a.run.app",
-    "https://boutique-frontend-238562702765.us-central1.run.app",
 ]
 
 # Agregar orígenes adicionales desde variable de entorno (para producción)

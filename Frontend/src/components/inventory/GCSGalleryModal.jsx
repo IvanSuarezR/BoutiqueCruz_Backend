@@ -305,6 +305,11 @@ const GCSGalleryModal = ({ onClose, onSelectImage }) => {
                       src={img.url}
                       alt={img.name}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = 'https://via.placeholder.com/150?text=Error+Carga';
+                        console.error('Error loading image:', img.url);
+                      }}
                     />
                     {selectedImages.includes(img.name) && (
                       <div className="absolute inset-0 bg-blue-500 bg-opacity-20 flex items-center justify-center">

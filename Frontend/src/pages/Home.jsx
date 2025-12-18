@@ -12,9 +12,7 @@ const Home = () => {
   const location = useLocation();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
-  // Leer banner desde runtime env (window._env_) si existe, luego fallback a import.meta.env
-  const runtimeEnv = typeof window !== 'undefined' && window._env_ ? window._env_ : {};
-  const [bannerUrl, setBannerUrl] = useState(runtimeEnv.VITE_BANNER_IMAGE_URL || import.meta.env.VITE_BANNER_IMAGE_URL || '');
+  const [bannerUrl, setBannerUrl] = useState('');
 
   // Cargar banner desde el backend
   useEffect(() => {
@@ -25,7 +23,7 @@ const Home = () => {
           setBannerUrl(data.banner_url);
         }
       } catch (error) {
-        console.log('Usando banner por defecto del .env');
+        console.error('Error al cargar el banner:', error);
       }
     };
     loadBanner();

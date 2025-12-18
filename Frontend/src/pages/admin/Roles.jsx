@@ -783,10 +783,10 @@ const Roles = () => {
                 <label className="text-sm text-gray-700">Apellido</label>
                 <input className="w-full border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500" value={userForm.last_name} onChange={(e)=> setUserForm(prev=> ({...prev, last_name: e.target.value}))} />
               </div>
-              <div>
+              {/* <div>
                 <label className="text-sm text-gray-700">Identificación</label>
                 <input className="w-full border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500" value={userForm.identification_number} onChange={(e)=> setUserForm(prev=> ({...prev, identification_number: e.target.value}))} />
-              </div>
+              </div> */}
               <div>
                 <label className="text-sm text-gray-700">Teléfono</label>
                 <input className="w-full border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500" value={userForm.phone} onChange={(e)=> setUserForm(prev=> ({...prev, phone: e.target.value}))} />

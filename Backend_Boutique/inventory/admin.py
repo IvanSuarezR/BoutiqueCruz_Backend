@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Category, Product, StockMovement, ProductImage
+from .models import Category, Product, StockMovement, ProductImage, SiteConfiguration
 
 
 @admin.register(Category)
@@ -27,6 +27,19 @@ class StockMovementAdmin(admin.ModelAdmin):
     list_display = ("product", "movement_type", "quantity", "created_by", "created_at")
     list_filter = ("movement_type",)
     search_fields = ("product__name", "product__sku")
-from django.contrib import admin
 
-# Register your models here.
+
+@admin.register(SiteConfiguration)
+class SiteConfigurationAdmin(admin.ModelAdmin):
+    list_display = ("banner_url", "updated_at")
+    
+    def has_add_permission(self, request):
+        # Solo permitir crear si no existe ninguno
+        if self.model.objects.exists():
+            return False
+        return super().has_add_permission(request)
+
+    def has_delete_permission(self, request, obj=None):
+        # No permitir borrar la configuración
+        return False
+
