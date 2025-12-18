@@ -33,7 +33,7 @@ SECRET_KEY = os.getenv('SECRET_KEY')
 DEBUG = os.getenv('DEBUG', 'True') == 'True'
 
 # Allowed hosts - para Cloud Run
-ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1,https://boutique-backend-708542243344.us-central1.run.app,https://boutique-frontend-708542243344.us-central1.run.app').split(',')
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1,boutique-backend-708542243344.us-central1.run.app,boutique-frontend-708542243344.us-central1.run.app').split(',')
 # Agregar dominio de Cloud Run automáticamente
 if os.getenv('K_SERVICE'):  # Variable presente en Cloud Run
     ALLOWED_HOSTS.append('*')  # O puedes especificar el dominio exacto
@@ -262,8 +262,8 @@ SIMPLE_JWT = {
 }
 
 # CORS Configuration
-# Permitir todos los orígenes temporalmente para descartar problemas de CORS vs Crash
-CORS_ALLOW_ALL_ORIGINS = True
+# Usar lista explícita en lugar de permitir todo
+CORS_ALLOW_ALL_ORIGINS = False
 
 # Agregar orígenes desde variable de entorno para Cloud Run
 CORS_ALLOWED_ORIGINS = [
@@ -274,6 +274,9 @@ CORS_ALLOWED_ORIGINS = [
     "https://boutique-frontend-708542243344.us-central1.run.app",
     "https://boutique-backend-708542243344.us-central1.run.app",
 ]
+
+# Configuración para Cloud Run (HTTPS detrás de proxy)
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 # CSRF Trusted Origins (Required for Django 4.0+)
 CSRF_TRUSTED_ORIGINS = [
