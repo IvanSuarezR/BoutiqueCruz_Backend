@@ -33,7 +33,7 @@ SECRET_KEY = os.getenv('SECRET_KEY')
 DEBUG = os.getenv('DEBUG', 'True') == 'True'
 
 # Allowed hosts - para Cloud Run
-ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1','https://boutique-backend-708542243344.us-central1.run.app','https://boutique-frontend-708542243344.us-central1.run.app').split(',')
 # Agregar dominio de Cloud Run automáticamente
 if os.getenv('K_SERVICE'):  # Variable presente en Cloud Run
     ALLOWED_HOSTS.append('*')  # O puedes especificar el dominio exacto
@@ -268,6 +268,8 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:5173",
     "http://localhost:5174",
     "http://127.0.0.1:5174",
+    "https://boutique-frontend-708542243344.us-central1.run.app",
+    "https://boutique-backend-708542243344.us-central1.run.app",
 ]
 
 # Agregar orígenes adicionales desde variable de entorno (para producción)
